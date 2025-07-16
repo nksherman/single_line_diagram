@@ -1,4 +1,4 @@
-import { EquipmentBase } from './equipment';
+import { EquipmentBase } from './equipmentBase';
 import type { EquipmentBaseData, EquipmentType } from '../types/equipment.types';
 
 /**
@@ -54,31 +54,9 @@ export class Generator extends EquipmentBase {
     return this.isOnline ? this.capacity * (this.efficiency / 100) : 0;
   }
 
-  /* * Generic  methods for EquipmentBase * */
-
-  addSource(source: EquipmentBase): void {
-    super.addSource(source);
-  }
-
-  addLoad(load: EquipmentBase): void {
-    super.addLoad(load);
-  }
-
-  removeSource(source: EquipmentBase): void {
-      super.removeSource(source);
-  }
-
-  removeLoad(load: EquipmentBase): void {
-      super.removeLoad(load);
-  }
-
-  get sources(): ReadonlySet<EquipmentBase> {
-    return super.sources;
-  }
-
-  get loads(): ReadonlySet<EquipmentBase> {
-    return super.loads;
-  }
+  /**
+   * Serialization and deserialization methods
+   */  
 
   toJSON(): GeneratorEquipmentData {
     return {

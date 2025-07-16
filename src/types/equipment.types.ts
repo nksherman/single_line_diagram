@@ -10,15 +10,6 @@ export interface EquipmentBaseData {
   loadIds?: string[];
 }
 
-export interface GeneratorEquipmentData extends EquipmentBaseData {
-capacity: number;
-voltage: number;
-fuelType: 'Diesel' | 'Gas' | 'Renewable';
-efficiency: number; // Percentage
-isOnline: boolean; // Operational status
-}
-
-
 export interface ConnectionData {
   sourceId: string;
   loadId: string;

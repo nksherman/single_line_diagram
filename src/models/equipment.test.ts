@@ -1,4 +1,4 @@
-import { EquipmentBase } from './equipment';
+import { EquipmentBase } from './equipmentBase';
 import type { EquipmentType } from '../types/equipment.types';
 
 describe('EquipmentBase', () => {

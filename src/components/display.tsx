@@ -1,6 +1,7 @@
 import { useState, useEffect }  from 'react';
+import type { ReactNode } from 'react'
 import { Stage, Layer, Line } from 'react-konva';
-import { Box } from '@mui/material';
+import { Box, Popover } from '@mui/material';
 
 import { EquipmentBase } from '../models/equipmentBase';
 import type { DisplayNode, DisplayConnection } from './layoutSLD/displayAdapter';
@@ -17,8 +18,26 @@ import EquipmentComponent from './layoutSLD/equipmentComponent';
  * For now, display all equipment vertically.
  */
 
+interface PopoverPosition {
+  x: number;
+  y: number;
+}
+
 function Display({ equipment }: { equipment: EquipmentBase[] }) {
   const [layout, setLayout] = useState<{ nodes: DisplayNode[], connections: DisplayConnection[] }>();
+  const [popoverPosition, setPopoverPosition] = useState<PopoverPosition | null>(null);
+  const [popoverContent, setPopoverContent] = useState<ReactNode | null>(null);
+  
+  // Handle Konva-specific popover opening at mouse position
+  const handleKonvaPopoverOpen = (position: PopoverPosition, content: ReactNode) => {
+    setPopoverPosition(position);
+    setPopoverContent(content);
+  };
+  
+  const handleKonvaPopoverClose = () => {
+    setPopoverPosition(null);
+    setPopoverContent(null);
+  };
   
   useEffect(() => {
     // Convert equipment to display data
@@ -35,7 +54,7 @@ function Display({ equipment }: { equipment: EquipmentBase[] }) {
   if (!layout) return null;
   
   return (
-    <Box sx={{ width: '100%', height: '100%' }}>
+    <Box sx={{ width: '100%', height: '100%', position: 'relative' }}>
       <Stage width={window.innerWidth} height={window.innerHeight}>
         <Layer>
           {/* Render connections first (behind equipment) */}
@@ -45,10 +64,29 @@ function Display({ equipment }: { equipment: EquipmentBase[] }) {
           
           {/* Render equipment nodes */}
           {layout.nodes.map(node => 
-            <EquipmentComponent key={node.id} node={node} />
+            <EquipmentComponent key={node.id} node={node} handleKonvaPopoverOpen={handleKonvaPopoverOpen} />
           )}
         </Layer>
       </Stage>
+      
+      {/* Konva-specific Popover */}
+      <Popover
+        open={Boolean(popoverContent)}
+        anchorReference="anchorPosition"
+        anchorPosition={popoverPosition ? { top: popoverPosition.y, left: popoverPosition.x } : undefined}
+        onClose={handleKonvaPopoverClose}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'left',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'left',
+        }}
+        disableRestoreFocus
+      >
+        {popoverContent}
+      </Popover>
     </Box>
   );
 }

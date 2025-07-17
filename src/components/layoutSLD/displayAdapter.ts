@@ -62,7 +62,7 @@ class EquipmentDisplayAdapter {
     if (equipment instanceof Generator) {
       textElements.push(...this.getGeneratorTextElements(equipment));
     } else if (equipment instanceof Transformer) {
-      // nothing for now
+      textElements.push(...this.getTransformerTextElements(equipment));
     }
 
     return textElements;
@@ -97,6 +97,54 @@ class EquipmentDisplayAdapter {
       }
     ];
   }
+
+  private static getTransformerTextElements(transformer: Transformer): TextElement[] {
+    return [
+      {
+        id: `${transformer.id}-primary-voltage`,
+        text: `${transformer.primaryVoltage}kV`,
+        position: 'left-top',
+        align: 'right',
+        fontSize: 10,
+        color: 'blue'
+      },
+      {
+        id: `${transformer.id}-secondary-voltage`,
+        text: `${transformer.secondaryVoltage}kV`,
+        position: 'left-bottom',
+        align: 'right',
+        fontSize: 10,
+        color: 'green'
+      },
+      {
+        id: `${transformer.id}-power-rating`,
+        text: `${transformer.powerRating}MVA`,
+        position: 'right-top',
+        align: 'left',
+        fontSize: 10,
+        color: 'purple'
+
+      },
+      {
+        id: `${transformer.id}-phase-count`,
+        text: `${transformer.phaseCount} Phases`,
+        position: 'right-bottom',
+        align: 'left',
+        fontSize: 10,
+        offset: { x: 5, y: 0 }
+      },
+      {
+        id: `${transformer.id}-connection-type`,
+        text: transformer.connectionType,
+        position: 'bottom',
+        align: 'center',
+        fontSize: 10,
+        color: 'orange'
+      }
+    ];
+
+  }
+
 
   static toDisplayNodes(equipment: EquipmentBase[]): DisplayNode[] {
     return equipment.map(eq => ({

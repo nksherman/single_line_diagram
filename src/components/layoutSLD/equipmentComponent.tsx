@@ -1,13 +1,24 @@
-import { Group, Rect, Text, Image } from 'react-konva';
+import type { ReactNode } from 'react'
 import useImage from 'use-image';
+
+import { Group, Rect, Text, Image } from 'react-konva';
+
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
 
 import type { DisplayNode, TextElement } from './displayAdapter';
 
-interface EquipmentComponentProps {
-  node: DisplayNode;
+interface PopoverPosition {
+  x: number;
+  y: number;
 }
 
-function EquipmentComponent({ node }: EquipmentComponentProps) {
+interface EquipmentComponentProps {
+  node: DisplayNode;
+  handleKonvaPopoverOpen: (position: PopoverPosition, content: ReactNode) => void;
+}
+
+function EquipmentComponent({ node, handleKonvaPopoverOpen }: EquipmentComponentProps) {
   const [image] = useImage(node.iconPath);
 
   const getTextPosition = (textElement: TextElement) => {
@@ -94,6 +105,30 @@ function EquipmentComponent({ node }: EquipmentComponentProps) {
     };
   };
 
+  const handleClick = (event: any) => {
+    // call the popover event with the node's properties
+    event.evt.stopPropagation();
+    event.evt.preventDefault();
+    
+    const content = (
+      <Box>
+        {node.textElements.map(te => (
+          <Box key={te.id} style={{ color: te.color || 'black' }}>
+            <Typography>
+              {te.text}
+            </Typography>
+          </Box>
+        ))}
+      </Box>
+    );
+    
+    // Use mouse position for popover positioning
+    handleKonvaPopoverOpen(
+      { x: event.evt.clientX, y: event.evt.clientY },
+      content
+    );
+  };
+
   return (
     <Group
       id={node.id}
@@ -117,6 +152,7 @@ function EquipmentComponent({ node }: EquipmentComponentProps) {
           height={node.size.height - 4}
           x={2}
           y={2}
+          onClick={(e) => handleClick(e)}
         />
       )}
       

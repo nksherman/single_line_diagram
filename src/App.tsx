@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import type { ReactNode, MouseEvent } from 'react'
 import './App.css'
 
 import Box from '@mui/material/Box'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
+import { Popover } from '@mui/material'
 
 import Display from './components/display'
 import EquipmentCreator from './components/equipmentCreator'
@@ -38,8 +40,22 @@ function defaultEquipment(): EquipmentBase[] {
 
 
 function App() {
-  // initialize with 2 equipment items
   const [equipment, setEquipment] = useState<EquipmentBase[]>(() => defaultEquipment());
+
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const [popoverContent, setPopoverContent] = useState<ReactNode | null>(null);
+
+
+  /* handle popout info and formula */  
+  const handlePopoverOpen = (anchorElement: HTMLElement, content: ReactNode) => {
+    setAnchorEl(anchorElement);
+    setPopoverContent(content);
+  };
+  
+  const handlePopoverClose = () => {
+    setAnchorEl(null);
+    setPopoverContent(null);
+  };
 
   return (
     <Paper>
@@ -61,6 +77,24 @@ function App() {
           </Box>
         </Box>
       </Box>
+
+      {/*  Popover anywhere */}
+      <Popover
+        open={Boolean(anchorEl) && Boolean(popoverContent)}
+        anchorEl={anchorEl}
+        onClose={handlePopoverClose}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'left',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        disableRestoreFocus
+      >
+        {popoverContent}
+      </Popover>
     </Paper>
   )
 }

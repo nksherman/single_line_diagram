@@ -1,6 +1,8 @@
 import { EquipmentBase } from './equipmentBase';
 import type { EquipmentBaseData, EquipmentType } from '../types/equipment.types';
 
+import generatorSymbol from '../../public/icons/generator.svg';
+
 /**
  * Generator-specific properties and methods
  */
@@ -106,4 +108,3 @@ export class Generator extends EquipmentBase {
     return `Generator(${this.id}: ${this.name} [${this.capacity}MW, ${this.fuelType}, ${this.isOnline ? 'Online' : 'Offline'}])`;
   }
 }
-

@@ -2,11 +2,11 @@ import { useState } from 'react'
 import './App.css'
 
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 
 import Display from './components/display'
+import EquipmentCreator from './components/equipmentCreator'
 
 import { EquipmentBase } from './models/equipmentBase'
 import { Generator } from './models/generatorEquipment'
@@ -43,10 +43,24 @@ function App() {
 
   return (
     <Paper>
-      <Box>
-        <Typography variant="h2">Single Line Diagram</Typography>
+      <Box sx={{ p: 2 }}>
+        <Typography variant="h2" gutterBottom>Single Line Diagram</Typography>
+        
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          {/* Equipment Creator */}
+          <Box sx={{ flex: '0 0 400px' }}>
+            <EquipmentCreator 
+              equipmentList={equipment} 
+              setEquipmentList={setEquipment} 
+            />
+          </Box>
+          
+          {/* Display */}
+          <Box sx={{ flex: 1 }}>
+            <Display equipment={equipment} />
+          </Box>
+        </Box>
       </Box>
-      <Display equipment={equipment} />
     </Paper>
   )
 }

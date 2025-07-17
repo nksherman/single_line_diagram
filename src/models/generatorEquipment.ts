@@ -14,6 +14,28 @@ export interface GeneratorProperties {
   isOnline: boolean;
 }
 
+export function generatorValidation(properties: Partial<GeneratorProperties>): string[] {
+  const errors: string[] = [];
+  
+  if (!properties.capacity || properties.capacity <= 0) {
+    errors.push('Capacity must be a positive number');
+  }
+  
+  if (!properties.voltage || properties.voltage <= 0) {
+    errors.push('Voltage must be a positive number');
+  }
+  
+  if (!properties.fuelType) {
+    errors.push('Fuel type is required');
+  }
+  
+  if (typeof properties.efficiency !== 'number' || properties.efficiency < 0 || properties.efficiency > 100) {
+    errors.push('Efficiency must be a percentage between 0 and 100');
+  }
+  
+  return errors;
+}
+
 export interface GeneratorEquipmentData extends EquipmentBaseData, GeneratorProperties {}
 
 /**
@@ -41,6 +63,13 @@ export class Generator extends EquipmentBase {
     this.efficiency = properties.efficiency;
     this.isOnline = properties.isOnline;
   }
+
+  static inputProperties: string[] = [
+    "capacity",
+    "voltage",
+    "fuelType",
+    "efficiency"
+  ]
 
   start(): void {
     this.isOnline = true;
@@ -108,3 +137,5 @@ export class Generator extends EquipmentBase {
     return `Generator(${this.id}: ${this.name} [${this.capacity}MW, ${this.fuelType}, ${this.isOnline ? 'Online' : 'Offline'}])`;
   }
 }
+
+export default Generator; 

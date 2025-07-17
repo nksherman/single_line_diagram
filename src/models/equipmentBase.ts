@@ -29,7 +29,9 @@ export class EquipmentBase {
     
     EquipmentBase.registry.set(id, this);
   }
-  
+
+  static inputProperties: string[] = []
+
   addSource(source: EquipmentBase): void {
     this._sources.add(source);
     source._loads.add(this);

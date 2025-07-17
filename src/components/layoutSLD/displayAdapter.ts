@@ -1,13 +1,27 @@
 import { EquipmentBase } from '../../models/equipmentBase';
 import type { EquipmentBaseData, EquipmentType } from '../../types/equipment.types';
 
-// Display data structures (decoupled from equipment models)
+import Generator from '../../models/generatorEquipment';
+import Transformer from '../../models/transformerEquipment';
+
+export interface TextElement {
+  id: string;
+  text: string;
+  position: 'top' | 'bottom' | 'left' | 'right' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'left-top' | 'left-bottom' | 'right-top' | 'right-bottom';
+  align: 'left' | 'center' | 'right';
+  fontSize?: number;
+  color?: string;
+  offset?: { x: number; y: number };
+}
+
 export interface DisplayNode {
   id: string;
   type: string;
   position: { x: number; y: number };
   size: { width: number; height: number };
   label: string;
+  iconPath: string;
+  textElements: TextElement[];
   metadata: Record<string, any>;
 }
 
@@ -32,6 +46,58 @@ class EquipmentDisplayAdapter {
     return sizes[type] || { width: 40, height: 40 };
   }
 
+  private static getTextElements(equipment: EquipmentBase): TextElement[] {
+    const textElements: TextElement[] = [];
+
+    // Equipment name common
+    textElements.push({
+      id: `${equipment.id}-name`,
+      text: equipment.name,
+      position: 'bottom',
+      align: 'center',
+      fontSize: 12
+    });
+
+    // Type-specific text elements
+    if (equipment instanceof Generator) {
+      textElements.push(...this.getGeneratorTextElements(equipment));
+    } else if (equipment instanceof Transformer) {
+      // nothing for now
+    }
+
+    return textElements;
+  }
+
+  private static getGeneratorTextElements(generator: Generator): TextElement[] {
+    return [
+      {
+        id: `${generator.id}-capacity`,
+        text: `${generator.capacity}MW`,
+        position: 'left-top',
+        align: 'right',
+        fontSize: 10,
+        color: 'blue'
+      },
+      {
+        id: `${generator.id}-voltage`,
+        text: `${generator.voltage}kV`,
+        position: 'left-bottom',
+        align: 'right',
+        fontSize: 10,
+        color: 'green'
+      },
+      {
+        id: `${generator.id}-status`,
+        text: generator.isOnline ? 'ON' : 'OFF',
+        position: 'right',
+        align: 'left',
+        fontSize: 10,
+        color: generator.isOnline ? 'green' : 'red',
+        offset: { x: 5, y: 0 }
+      }
+    ];
+  }
+
   static toDisplayNodes(equipment: EquipmentBase[]): DisplayNode[] {
     return equipment.map(eq => ({
       id: eq.id,
@@ -39,6 +105,8 @@ class EquipmentDisplayAdapter {
       position: { x: 0, y: 0 },
       size: this.getDefaultSize(eq.type),
       label: eq.name,
+      iconPath: `/icons/${eq.type.toLowerCase()}.svg`,
+      textElements: this.getTextElements(eq),
       metadata: { ...eq.metadata }
     }));
   }
@@ -59,4 +127,4 @@ class EquipmentDisplayAdapter {
   }
 }
 
-export default EquipmentDisplayAdapter
+export default EquipmentDisplayAdapter;

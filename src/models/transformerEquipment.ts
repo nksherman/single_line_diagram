@@ -15,12 +15,37 @@ export interface TransformerProperties {
   isOperational: boolean;
 }
 
+export function transformerValidation(properties: Partial<TransformerProperties>): string[] {
+  const errors: string[] = [];
+
+  if (!properties.primaryVoltage || properties.primaryVoltage <= 0) {
+    errors.push('Primary voltage must be a positive number');
+  }
+  if (!properties.secondaryVoltage || properties.secondaryVoltage <= 0) {
+    errors.push('Secondary voltage must be a positive number');
+  }
+  if (!properties.powerRating || properties.powerRating <= 0) {
+    errors.push('Power rating must be a positive number');
+  }
+  if (!properties.phaseCount || (properties.phaseCount !== 1 && properties.phaseCount !== 3)) {
+    errors.push('Phase count must be 1 or 3');
+  }
+  if (!properties.connectionType) {
+    errors.push('Connection type is required');
+  }
+  if (!properties.impedance || properties.impedance <= 0) {
+    errors.push('Impedance must be a positive number');
+  }
+  
+  return errors;
+}
+
 export interface TransformerEquipmentData extends EquipmentBaseData, TransformerProperties {}
 
 /**
  * Transformer class extending EquipmentBase with transformer-specific functionality
  */
-export class Transformer extends EquipmentBase {
+class Transformer extends EquipmentBase {
   public primaryVoltage: number;
   public secondaryVoltage: number;
   public powerRating: number;
@@ -47,6 +72,15 @@ export class Transformer extends EquipmentBase {
     
     this.isOperational = properties.isOperational;
   }
+
+  static inputProperties: string[] = [
+    "primaryVoltage",
+    "secondaryVoltage",
+    "powerRating",
+    "phaseCount",
+    "connectionType",
+    "impedance"
+  ]
 
   start(): void {
     this.isOperational = true;
@@ -116,3 +150,4 @@ export class Transformer extends EquipmentBase {
   }
 }
 
+export default Transformer;

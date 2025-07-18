@@ -18,7 +18,7 @@ export interface GeneratorEquipmentData extends EquipmentBaseData, GeneratorProp
 /**
  * Generator class extending EquipmentBase with generator-specific functionality
  */
-export class Generator extends EquipmentBase {
+class Generator extends EquipmentBase {
   public capacity: number;
   public voltage: number;
   public fuelType: GeneratorProperties['fuelType'];

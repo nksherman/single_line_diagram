@@ -10,23 +10,12 @@ export interface BusProperties {
   voltage: number; // kV
 }
 
-
-export function busValidation(properties: Partial<BusProperties>): string[] {
-  const errors: string[] = [];
-  
-  if (!properties.voltage || properties.voltage <= 0) {
-    errors.push('Voltage must be a positive number');
-  }
-  
-  return errors;
-}
-
 export interface BusEquipmentData extends EquipmentBaseData, BusProperties {}
 
 /**
  * Bus class extending EquipmentBase with bus-specific functionality
  */
-export class Bus extends EquipmentBase {
+class Bus extends EquipmentBase {
   public voltage: number;
 
   public allowedSources: number = 16;

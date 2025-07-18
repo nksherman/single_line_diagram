@@ -221,6 +221,73 @@ export class VerticalHierarchyLayout implements LayoutEngine {
   ): DisplayConnection[] {
     const nodeMap = new Map(positionedNodes.map(node => [node.id, node]));
     
+    // Separate bus connections from regular connections
+    const busConnections: DisplayConnection[] = [];
+    const regularConnections: DisplayConnection[] = [];
+    
+    connections.forEach(conn => {
+      const sourceNode = nodeMap.get(conn.sourceId);
+      const targetNode = nodeMap.get(conn.targetId);
+      
+      if (sourceNode?.type === 'Bus' || targetNode?.type === 'Bus') {
+        busConnections.push(conn);
+      } else {
+        regularConnections.push(conn);
+      }
+    }); 
+    
+    // Process bus connections with straight vertical lines
+    const processedBusConnections = this.calculateBusConnectionPaths(busConnections, nodeMap);
+    
+    // Process regular connections with existing logic
+    const processedRegularConnections = this.calculateRegularConnectionPaths(regularConnections, nodeMap);
+    
+    return [...processedBusConnections, ...processedRegularConnections];
+  }
+
+  private calculateBusConnectionPaths(
+    connections: DisplayConnection[],
+    nodeMap: Map<string, DisplayNode>
+  ): DisplayConnection[] {
+    return connections.map(conn => {
+      const sourceNode = nodeMap.get(conn.sourceId);
+      const targetNode = nodeMap.get(conn.targetId);
+      
+      if (!sourceNode || !targetNode) {
+        return { ...conn, points: [] };
+      }
+      
+      let points: number[];
+      
+      if (sourceNode.type === 'Bus') {
+        // Bus is source - straight vertical line from bus center to target top
+        const busX = sourceNode.position.x + sourceNode.size.width / 2;
+        const busY = sourceNode.position.y + sourceNode.size.height;
+        const targetX = targetNode.position.x + targetNode.size.width / 2;
+        const targetY = targetNode.position.y;
+        
+        points = [busX, busY, targetX, targetY];
+      } else if (targetNode.type === 'Bus') {
+        // Bus is target - straight vertical line from source bottom to bus center
+        const sourceX = sourceNode.position.x + sourceNode.size.width / 2;
+        const sourceY = sourceNode.position.y + sourceNode.size.height;
+        const busX = targetNode.position.x + targetNode.size.width / 2;
+        const busY = targetNode.position.y;
+        
+        points = [sourceX, sourceY, busX, busY];
+      } else {
+        // Fallback - shouldn't happen with current logic
+        points = [];
+      }
+      
+      return { ...conn, points };
+    });
+  }
+
+  private calculateRegularConnectionPaths(
+    connections: DisplayConnection[],
+    nodeMap: Map<string, DisplayNode>
+  ): DisplayConnection[] {
     // Group connections by target to detect multi-source scenarios
     const connectionsByTarget = new Map<string, DisplayConnection[]>();
     connections.forEach(conn => {

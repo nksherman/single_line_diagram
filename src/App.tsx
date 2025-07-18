@@ -12,7 +12,9 @@ import Display from './components/display'
 import EquipmentCreator from './components/equipmentCreator'
 
 import { EquipmentBase } from './models/equipmentBase'
-import { Generator } from './models/generatorEquipment'
+import Generator from './models/generatorEquipment'
+import Transformer from './models/transformerEquipment'
+import Bus from './models/busEquipment';
 
 
 function defaultEquipment(): EquipmentBase[] {
@@ -25,18 +27,39 @@ function defaultEquipment(): EquipmentBase[] {
     efficiency: 95,
     isOnline: true
   });
-
-  const generator2 = new Generator('2', 'Generator 2', {
-    capacity: 150,
+  
+  const bus1 = new Bus('2', 'Bus 1', {
     voltage: 11,
-    fuelType: 'diesel',
-    efficiency: 90,
-    isOnline: false
   });
 
+  const tx1 = new Transformer('3', 'Transformer 1', {
+    primaryVoltage: 11,
+    secondaryVoltage: 4.16,
+    powerRating: 15,
+    phaseCount: 1,
+    connectionType: 'Wye',
+    impedance: 6.5,
+    isOperational: true
+  });
+
+  const tx2 = new Transformer('4', 'Transformer 2', {
+    primaryVoltage: 11,
+    secondaryVoltage: 4.16,
+    powerRating: 15,
+    phaseCount: 3,
+    connectionType: 'Delta',
+    impedance: 6.5,
+    isOperational: true
+  });
+
+
   // Connect generators
-  EquipmentBase.connectById(generator1.id, generator2.id);
-  return [generator1, generator2];
+
+  EquipmentBase.connectById(generator1.id, bus1.id);
+  EquipmentBase.connectById(bus1.id, tx1.id);
+  EquipmentBase.connectById(bus1.id, tx2.id);
+
+  return [generator1, bus1, tx1, tx2];
 }
 
 

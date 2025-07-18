@@ -3,6 +3,7 @@ import type { EquipmentBaseData, EquipmentType } from '../../types/equipment.typ
 
 import Generator from '../../models/generatorEquipment';
 import Transformer from '../../models/transformerEquipment';
+import Bus from '../../models/busEquipment';
 
 export interface TextElement {
   id: string;
@@ -38,7 +39,7 @@ class EquipmentDisplayAdapter {
     const sizes: Record<string, { width: number; height: number }> = {
       Generator: { width: 40, height: 40 },
       Transformer: { width: 50, height: 40 },
-      Bus: { width: 60, height: 20 },
+      Bus: { width: 60, height: 8 }, // Initial size - will be updated by layout engine
       Load: { width: 30, height: 30 },
       // Add more equipment types as needed
     };
@@ -63,6 +64,8 @@ class EquipmentDisplayAdapter {
       textElements.push(...this.getGeneratorTextElements(equipment));
     } else if (equipment instanceof Transformer) {
       textElements.push(...this.getTransformerTextElements(equipment));
+    } else if (equipment instanceof Bus) {
+      textElements.push(...this.getBusTextElements(equipment));
     }
 
     return textElements;
@@ -145,6 +148,18 @@ class EquipmentDisplayAdapter {
 
   }
 
+  private static getBusTextElements(bus: Bus): TextElement[] {
+    return [
+      {
+        id: `${bus.id}-voltage`,
+        text: `${bus.voltage}kV`,
+        position: 'left-top',
+        align: 'center',
+        fontSize: 10,
+        color: 'blue'
+      }
+    ];
+  }
 
   static toDisplayNodes(equipment: EquipmentBase[]): DisplayNode[] {
     return equipment.map(eq => ({

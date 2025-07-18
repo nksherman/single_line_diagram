@@ -1,10 +1,85 @@
 import type { DisplayNode, DisplayConnection } from './displayAdapter';
+import { calculateConnectionPaths, MultiSourcePathCalculator } from './pathingUtils';
+
+
+export interface VerticalSubAssembly {
+
+  /**
+   * Vertical sub assemblies will have some relative nodes and connections,
+   * with x/y postions relative to the vertical sub assembly.
+   * 
+   */
+  id: string;
+  nodes: DisplayNode[];
+  connections: DisplayConnection[];
+  position: { x: number; y: number }; // total position, set by layout engine
+  boundPolygon: number[]; // Polygon points for the bounding box
+}
+
+
+export interface BusLayout {
+  id: string;
+  busNode: DisplayNode; // the equipment for the element
+  sourceAssemblies: VerticalSubAssembly[]; // all vertical sub assemblies connected above bus
+  targetAssemblies: VerticalSubAssembly[]; // all vertical sub assemblies connected below bus
+  position: { x: number; y: number }; // total position, set by layout engine
+}
 
 export interface LayoutEngine {
   calculateLayout(nodes: DisplayNode[], connections: DisplayConnection[]): {
     nodes: DisplayNode[];
     connections: DisplayConnection[];
   };
+
+}
+
+export class TotalLayoutEngine implements LayoutEngine {
+  public buses: BusLayout[] = [];
+  public verticalSubAssemblies: VerticalSubAssembly[] = [];
+
+  public busToSubAssemblies: Map<string, VerticalSubAssembly[]> = new Map();
+  public subAssemblyToBus: Map<string, BusLayout> = new Map();
+
+  constructor(
+    nodes: DisplayNode[] = [],
+    connections: DisplayConnection[] = []
+  ) {
+    
+    // initialize buses and vertical sub assemblies
+    this.buses = [];
+    this.verticalSubAssemblies = [];
+
+    // isolate buses and subassemblies
+    const [_busNodes, subAssemblyGroups] = this.identifyGroups(nodes, connections);
+
+    // create subassemblies from group of nodes  recursive connections error?
+    for (const subAssemblyGroup of subAssemblyGroups) {
+      const subAssembly = this.createVerticalSubAssembly(subAssemblyGroup, connections);
+      this.verticalSubAssemblies.push(subAssembly);
+    }
+  }
+
+  calculateLayout(nodes: DisplayNode[], connections: DisplayConnection[]) {
+    // TODO: Implement total layout calculation
+    return { nodes, connections };
+  }
+
+  private identifyGroups(_nodes: DisplayNode[], _connections: DisplayConnection[]): [DisplayNode[], DisplayNode[][]] {
+    // TODO: Implement group identification logic
+    // For now, return empty arrays to avoid compilation errors
+    return [[], []];
+  }
+
+  private createVerticalSubAssembly(nodes: DisplayNode[], _connections: DisplayConnection[]): VerticalSubAssembly {
+    // TODO: Implement vertical sub assembly creation
+    return {
+      id: `sub-assembly-${Date.now()}`,
+      nodes,
+      connections: [],
+      position: { x: 0, y: 0 },
+      boundPolygon: []
+    };
+  }
 }
 
 export class VerticalHierarchyLayout implements LayoutEngine {
@@ -90,7 +165,8 @@ export class VerticalHierarchyLayout implements LayoutEngine {
           const targets = graph.get(nodeId) || new Set();
           targets.forEach(targetId => {
             if (inDegree.has(targetId)) {
-              inDegree.set(targetId, inDegree.get(targetId)! - 1);
+              const newDegree = inDegree.get(targetId)! - 1;
+              inDegree.set(targetId, newDegree);
             }
           });
         });
@@ -145,24 +221,73 @@ export class VerticalHierarchyLayout implements LayoutEngine {
   ): DisplayConnection[] {
     const nodeMap = new Map(positionedNodes.map(node => [node.id, node]));
     
-    return connections.map(conn => {
-      const sourceNode = nodeMap.get(conn.sourceId);
-      const targetNode = nodeMap.get(conn.targetId);
-      
-      if (!sourceNode || !targetNode) {
-        return { ...conn, points: [] };
-      }
-      
-      // Calculate connection points (center bottom of source to center top of target)
-      const sourceX = sourceNode.position.x + sourceNode.size.width / 2;
-      const sourceY = sourceNode.position.y + sourceNode.size.height;
-      const targetX = targetNode.position.x + targetNode.size.width / 2;
-      const targetY = targetNode.position.y;
-      
-      // Simple straight line connection
-      const points = [sourceX, sourceY, targetX, targetY];
-      
-      return { ...conn, points };
+    // Group connections by target to detect multi-source scenarios
+    const connectionsByTarget = new Map<string, DisplayConnection[]>();
+    connections.forEach(conn => {
+      const existing = connectionsByTarget.get(conn.targetId) || [];
+      existing.push(conn);
+      connectionsByTarget.set(conn.targetId, existing);
     });
+
+    const processedConnections: DisplayConnection[] = [];
+    const processedTargets = new Set<string>();
+
+    connectionsByTarget.forEach((targetConnections, targetId) => {
+      if (processedTargets.has(targetId)) return;
+      
+      if (targetConnections.length > 1) {
+        // Multi-source scenario - use horizontal bus approach
+        const multiSourceCalculator = new MultiSourcePathCalculator();
+        const sourceNodes = targetConnections
+          .map(conn => nodeMap.get(conn.sourceId))
+          .filter((node): node is DisplayNode => node !== undefined);
+        const targetNode = nodeMap.get(targetId);
+        
+        if (targetNode && sourceNodes.length > 0) {
+          const multiConnections = multiSourceCalculator.calculateMultiSourcePaths(
+            sourceNodes,
+            [targetNode],
+            { 
+              routingStyle: 'rightAngle',
+              verticalOffset: 15,
+              minimumHorizontalExtension: 30
+            }
+          );
+          
+          // Map the generated connections back to original connection IDs
+          // The multiConnections array should have the same length as sourceNodes/targetConnections
+          targetConnections.forEach((originalConn, index) => {
+            if (multiConnections[index]) {
+              processedConnections.push({
+                ...originalConn,
+                points: multiConnections[index].points
+              });
+            }
+          });
+        }
+        
+        processedTargets.add(targetId);
+      } else {
+        // Single source - use standard right-angle routing
+        const singleConnection = targetConnections[0];
+        const standardConnections = calculateConnectionPaths(
+          [singleConnection], 
+          nodeMap, 
+          { 
+            routingStyle: 'rightAngle',
+            verticalOffset: 15,
+            minimumHorizontalExtension: 20
+          }
+        );
+        
+        if (standardConnections[0]) {
+          processedConnections.push(standardConnections[0]);
+        }
+        
+        processedTargets.add(targetId);
+      }
+    });
+
+    return processedConnections;
   }
 }

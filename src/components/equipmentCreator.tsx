@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 
 import Box from '@mui/material/Box';
 import Select from '@mui/material/Select';
@@ -25,7 +26,7 @@ interface EquipmentClass {
 
 function EquipmentCreator({equipmentList, setEquipmentList}: {
   equipmentList: EquipmentBase[],
-  setEquipmentList: (equipment: EquipmentBase[]) => void
+  setEquipmentList: (equipment: EquipmentBase[]) => void,
 }) {
   // State for form
   const [selectedEquipmentType, setSelectedEquipmentType] = useState<string>('');
@@ -53,6 +54,69 @@ function EquipmentCreator({equipmentList, setEquipmentList}: {
 
   // Get the selected equipment class
   const selectedClass = baseEquipment.find(eq => eq.name === selectedEquipmentType);
+
+  // Utility function to get equipment voltage
+  const getEquipmentVoltage = (equipment: EquipmentBase, connectionType: 'source' | 'load'): number | null => {
+    if (equipment instanceof Generator) {
+      return equipment.voltage;
+    } else if (equipment instanceof Transformer) {
+      // For transformers, use primary voltage for source connections and secondary for load connections
+      return connectionType === 'source' ? equipment.primaryVoltage : equipment.secondaryVoltage;
+    } else if (equipment instanceof Bus) {
+      return equipment.voltage;
+    }
+    return null;
+  };
+
+  // Utility function to get current equipment voltage
+  const getCurrentEquipmentVoltage = (connectionType: 'source' | 'load'): number | null => {
+    if (!selectedClass) return null;
+
+    if (selectedEquipmentType === 'Generator') {
+      return propertyValues.voltage || 0;
+    } else if (selectedEquipmentType === 'Transformer') {
+      // For transformers, use primary voltage for source connections and secondary for load connections
+      return connectionType === 'source' 
+        ? (propertyValues.primaryVoltage || 0) 
+        : (propertyValues.secondaryVoltage || 0);
+    } else if (selectedEquipmentType === 'Bus') {
+      return propertyValues.voltage || 0;
+    }
+    return null;
+  };
+
+  // Function to validate voltage compatibility
+  const validateVoltageCompatibility = (): string[] => {
+    const errors: string[] = [];
+
+    // Check source voltage compatibility
+    selectedSources.forEach(sourceId => {
+      const sourceEquipment = equipmentList.find(eq => eq.id === sourceId);
+      if (sourceEquipment) {
+        const sourceVoltage = getEquipmentVoltage(sourceEquipment, 'load'); // Source provides load-side voltage to us
+        const ourVoltage = getCurrentEquipmentVoltage('source'); // We receive on our source-side
+        
+        if (sourceVoltage !== null && ourVoltage !== null && sourceVoltage !== ourVoltage) {
+          errors.push(`Voltage mismatch: ${sourceEquipment.name} provides ${sourceVoltage}kV but ${equipmentName} expects ${ourVoltage}kV on source side`);
+        }
+      }
+    });
+
+    // Check load voltage compatibility
+    selectedLoads.forEach(loadId => {
+      const loadEquipment = equipmentList.find(eq => eq.id === loadId);
+      if (loadEquipment) {
+        const loadVoltage = getEquipmentVoltage(loadEquipment, 'source'); // Load expects source-side voltage from us
+        const ourVoltage = getCurrentEquipmentVoltage('load'); // We provide on our load-side
+        
+        if (loadVoltage !== null && ourVoltage !== null && loadVoltage !== ourVoltage) {
+          errors.push(`Voltage mismatch: ${equipmentName} provides ${ourVoltage}kV but ${loadEquipment.name} expects ${loadVoltage}kV`);
+        }
+      }
+    });
+
+    return errors;
+  };
 
   // Reset form when equipment type changes
   const handleEquipmentTypeChange = (type: string) => {
@@ -105,6 +169,10 @@ function EquipmentCreator({equipmentList, setEquipmentList}: {
       }
     });
 
+    // Validate voltage compatibility
+    const voltageErrors = validateVoltageCompatibility();
+    errors.push(...voltageErrors);
+
     return errors;
   };
 
@@ -120,6 +188,20 @@ function EquipmentCreator({equipmentList, setEquipmentList}: {
     if (!selectedClass) return;
 
     try {
+      // Check for multi-source scenario and check if intermediate bus is needed
+      const sourceEquipment: EquipmentBase[] = equipmentList.filter(eq => selectedSources.includes(eq.id));
+      const loadEquipment: EquipmentBase[] = equipmentList.filter(eq => selectedLoads.includes(eq.id));
+
+      if (sourceEquipment.some(eq => (eq.loads.size >= eq.allowedLoads) )) {
+        // I should clarify which sources have loads, and log them
+        throw new Error('Consider a Bus: Some selected sources cannot add load: ' + sourceEquipment.filter(eq => eq.loads.size > 0).map(eq => eq.name).join(', '));
+      }
+
+      if (loadEquipment.some(eq => (eq.sources.size >= eq.allowedSources))) {
+        // I should clarify which loads have sources, and log them
+        throw new Error('Consider a Bus: Some selected loads cannot add sources: ' + loadEquipment.filter(eq => eq.sources.size > 0).map(eq => eq.name).join(', '));
+      }
+
       // Generate unique ID
       const id = `${selectedEquipmentType.toLowerCase()}_${Date.now()}`;
       
@@ -168,17 +250,22 @@ function EquipmentCreator({equipmentList, setEquipmentList}: {
       setEquipmentList([...equipmentList, newEquipment]);
 
       // Reset form
-      setSelectedEquipmentType('');
-      setEquipmentName('');
-      setPropertyValues({});
-      setSelectedSources([]);
-      setSelectedLoads([]);
-      setValidationErrors([]);
+      resetForm();
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       setValidationErrors([`Error creating equipment: ${errorMessage}`]);
     }
+  };
+
+  // Helper function to reset form
+  const resetForm = () => {
+    setSelectedEquipmentType('');
+    setEquipmentName('');
+    setPropertyValues({});
+    setSelectedSources([]);
+    setSelectedLoads([]);
+    setValidationErrors([]);
   };
 
   // Render input field based on property definition

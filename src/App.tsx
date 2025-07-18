@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import type { ReactNode, MouseEvent } from 'react'
+import type { ReactNode } from 'react'
 import './App.css'
 
 import Box from '@mui/material/Box'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
-import { Popover } from '@mui/material'
+import Button from '@mui/material/Button'
+import Popover from '@mui/material/Popover'
 
 import Display from './components/display'
 import EquipmentCreator from './components/equipmentCreator'
@@ -67,8 +68,13 @@ function App() {
           <Box sx={{ flex: '0 0 400px' }}>
             <EquipmentCreator 
               equipmentList={equipment} 
-              setEquipmentList={setEquipment} 
+              setEquipmentList={setEquipment}
             />
+            <Button
+              onClick={() => console.log('Save equipment:', equipment)}
+            >
+              Save
+            </Button>
           </Box>
           
           {/* Display */}

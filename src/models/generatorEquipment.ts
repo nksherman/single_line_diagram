@@ -1,8 +1,6 @@
 import { EquipmentBase, type InputPropertiesDefinition } from './equipmentBase';
 import type { EquipmentBaseData, EquipmentType } from '../types/equipment.types';
 
-import generatorSymbol from '../../public/icons/generator.svg';
-
 /**
  * Generator-specific properties and methods
  */
@@ -25,6 +23,9 @@ export class Generator extends EquipmentBase {
   public voltage: number;
   public fuelType: GeneratorProperties['fuelType'];
   public efficiency: number;
+
+  public allowedSources: number = 0;
+  public allowedLoads: number = 1;
 
   // dynamic state variables
   public isOnline: boolean;

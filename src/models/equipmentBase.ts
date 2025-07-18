@@ -33,6 +33,9 @@ export class EquipmentBase {
   
   // Static registry to track all equipment instances
   private static registry: Map<string, EquipmentBase> = new Map();
+
+  public allowedSources: number = 1;
+  public allowedLoads: number = 1;
   
   constructor(id: string, name: string, type: EquipmentType) {
     if (EquipmentBase.registry.has(id)) {

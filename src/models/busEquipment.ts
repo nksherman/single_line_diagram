@@ -29,6 +29,9 @@ export interface BusEquipmentData extends EquipmentBaseData, BusProperties {}
 export class Bus extends EquipmentBase {
   public voltage: number;
 
+  public allowedSources: number = 16;
+  public allowedLoads: number = 16;
+
   constructor(
     id: string,
     name: string,

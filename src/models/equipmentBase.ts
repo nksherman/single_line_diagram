@@ -1,6 +1,22 @@
 import type { EquipmentBaseData, EquipmentType } from '../types/equipment.types';
 
 /**
+ * Property definition for equipment input forms
+ */
+export interface PropertyDefinition {
+  type: 'number' | 'string' | 'boolean' | 'select';
+  label: string;
+  defaultValue?: any;
+  options?: string[] | number[]; // For select type
+  validation?: (value: any) => string | undefined;
+}
+
+/**
+ * Collection of property definitions for an equipment type
+ */
+export type InputPropertiesDefinition = Record<string, PropertyDefinition>;
+
+/**
  * Equipment class representing electrical equipment in a single line diagram
  * Each equipment can have multiple sources (upstream connections) and loads (downstream connections)
  * This creates a bidirectional many-to-many relationship graph structure
@@ -30,7 +46,7 @@ export class EquipmentBase {
     EquipmentBase.registry.set(id, this);
   }
 
-  static inputProperties: string[] = []
+  static inputProperties: InputPropertiesDefinition = {}
 
   addSource(source: EquipmentBase): void {
     this._sources.add(source);

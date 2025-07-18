@@ -12,14 +12,15 @@ import OutlinedInput from '@mui/material/OutlinedInput';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 
-import { EquipmentBase } from '../models/equipmentBase';
-import Generator, { type GeneratorProperties, generatorValidation } from '../models/generatorEquipment';
-import Transformer, { type TransformerProperties, transformerValidation } from '../models/transformerEquipment';
+import { EquipmentBase, type PropertyDefinition } from '../models/equipmentBase';
+import Generator, { type GeneratorProperties } from '../models/generatorEquipment';
+import Transformer, { type TransformerProperties } from '../models/transformerEquipment';
+import Bus, { type BusProperties } from '../models/busEquipment';
 
 
 interface EquipmentClass {
   name: string;
-  properties: string[];
+  inputProperties: Record<string, PropertyDefinition>;
 }
 
 function EquipmentCreator({equipmentList, setEquipmentList}: {
@@ -36,8 +37,18 @@ function EquipmentCreator({equipmentList, setEquipmentList}: {
 
   // Define available equipment classes
   const baseEquipment: EquipmentClass[] = [
-    { name: 'Generator', properties: Generator.inputProperties },
-    { name: 'Transformer', properties: Transformer.inputProperties }
+    { 
+      name: 'Generator', 
+      inputProperties: Generator.inputProperties,
+    },
+    { 
+      name: 'Transformer', 
+      inputProperties: Transformer.inputProperties,
+    },
+    { 
+      name: 'Bus', 
+      inputProperties: Bus.inputProperties,
+    }
   ];
 
   // Get the selected equipment class
@@ -46,7 +57,19 @@ function EquipmentCreator({equipmentList, setEquipmentList}: {
   // Reset form when equipment type changes
   const handleEquipmentTypeChange = (type: string) => {
     setSelectedEquipmentType(type);
-    setPropertyValues({});
+    const selectedClass = baseEquipment.find(eq => eq.name === type);
+    if (selectedClass) {
+      // Set default values from property definitions
+      const defaultValues: Record<string, any> = {};
+      Object.entries(selectedClass.inputProperties).forEach(([key, prop]) => {
+        if (prop.defaultValue !== undefined) {
+          defaultValues[key] = prop.defaultValue;
+        }
+      });
+      setPropertyValues(defaultValues);
+    } else {
+      setPropertyValues({});
+    }
     setValidationErrors([]);
   };
 
@@ -71,16 +94,16 @@ function EquipmentCreator({equipmentList, setEquipmentList}: {
       return errors;
     }
 
-    // Validate based on equipment type
-    if (selectedEquipmentType === 'Generator') {
-      const props = propertyValues as Partial<GeneratorProperties>;
-      generatorValidation(props).forEach(error => errors.push(error));
-
-    } else if (selectedEquipmentType === 'Transformer') {
-      const props = propertyValues as Partial<TransformerProperties>;
-      transformerValidation(props).forEach(error => errors.push(error));
-
-    }
+    // Validate individual properties using their validation functions
+    Object.entries(selectedClass.inputProperties).forEach(([key, prop]) => {
+      const value = propertyValues[key];
+      if (prop.validation) {
+        const error = prop.validation(value);
+        if (error) {
+          errors.push(error);
+        }
+      }
+    });
 
     return errors;
   };
@@ -108,12 +131,20 @@ function EquipmentCreator({equipmentList, setEquipmentList}: {
           isOnline: false // Default state
         } as GeneratorProperties;
         newEquipment = new Generator(id, equipmentName, props);
+
       } else if (selectedEquipmentType === 'Transformer') {
         const props = {
           ...propertyValues,
           isOperational: false // Default state
         } as TransformerProperties;
         newEquipment = new Transformer(id, equipmentName, props);
+
+      } else if (selectedEquipmentType === 'Bus') {
+        const props = {
+          ...propertyValues
+        } as BusProperties;
+        newEquipment = new Bus(id, equipmentName, props);
+
       } else {
         throw new Error('Unsupported equipment type');
       }
@@ -150,73 +181,82 @@ function EquipmentCreator({equipmentList, setEquipmentList}: {
     }
   };
 
-  // Render input field based on property type
-  const renderPropertyInput = (property: string) => {
-    const value = propertyValues[property] || '';
+  // Render input field based on property definition
+  const renderPropertyInput = (propertyKey: string, propertyDef: PropertyDefinition) => {
+    const value = propertyValues[propertyKey] || propertyDef.defaultValue || '';
 
-    // Special cases for specific properties
-    if (property === 'fuelType') {
+    if (propertyDef.type === 'select') {
       return (
-        <FormControl fullWidth margin="dense">
-          <InputLabel>Fuel Type</InputLabel>
+        <FormControl fullWidth margin="dense" key={propertyKey}>
+          <InputLabel>{propertyDef.label}</InputLabel>
           <Select
             value={value}
-            label="Fuel Type"
-            onChange={(e) => handlePropertyChange(property, e.target.value)}
+            label={propertyDef.label}
+            onChange={(e) => handlePropertyChange(propertyKey, e.target.value)}
           >
-            <MenuItem value="natural_gas">Natural Gas</MenuItem>
-            <MenuItem value="diesel">Diesel</MenuItem>
-            <MenuItem value="solar">Solar</MenuItem>
-            <MenuItem value="wind">Wind</MenuItem>
-            <MenuItem value="hydro">Hydro</MenuItem>
-            <MenuItem value="nuclear">Nuclear</MenuItem>
-            <MenuItem value="coal">Coal</MenuItem>
+            {propertyDef.options?.map((option) => (
+              <MenuItem key={option} value={option}>
+                {typeof option === 'string' ? option.replace('_', ' ').toUpperCase() : option}
+              </MenuItem>
+            ))}
           </Select>
         </FormControl>
       );
     }
 
-    if (property === 'phaseCount') {
+    if (propertyDef.type === 'number') {
       return (
-        <FormControl fullWidth margin="dense">
-          <InputLabel>Phase Count</InputLabel>
+        <TextField
+          key={propertyKey}
+          fullWidth
+          margin="dense"
+          label={propertyDef.label}
+          type="number"
+          value={value}
+          onChange={(e) => handlePropertyChange(propertyKey, Number(e.target.value))}
+        />
+      );
+    }
+
+    if (propertyDef.type === 'string') {
+      return (
+        <TextField
+          key={propertyKey}
+          fullWidth
+          margin="dense"
+          label={propertyDef.label}
+          type="text"
+          value={value}
+          onChange={(e) => handlePropertyChange(propertyKey, e.target.value)}
+        />
+      );
+    }
+
+    if (propertyDef.type === 'boolean') {
+      return (
+        <FormControl fullWidth margin="dense" key={propertyKey}>
+          <InputLabel>{propertyDef.label}</InputLabel>
           <Select
             value={value}
-            label="Phase Count"
-            onChange={(e) => handlePropertyChange(property, Number(e.target.value))}
+            label={propertyDef.label}
+            onChange={(e) => handlePropertyChange(propertyKey, e.target.value === 'true')}
           >
-            <MenuItem value={1}>1</MenuItem>
-            <MenuItem value={3}>3</MenuItem>
+            <MenuItem value="true">Yes</MenuItem>
+            <MenuItem value="false">No</MenuItem>
           </Select>
         </FormControl>
       );
     }
 
-    if (property === 'connectionType') {
-      return (
-        <FormControl fullWidth margin="dense">
-          <InputLabel>Connection Type</InputLabel>
-          <Select
-            value={value}
-            label="Connection Type"
-            onChange={(e) => handlePropertyChange(property, e.target.value)}
-          >
-            <MenuItem value="Delta">Delta</MenuItem>
-            <MenuItem value="Wye">Wye</MenuItem>
-          </Select>
-        </FormControl>
-      );
-    }
-
-    // Default to number input for numeric properties
+    // Default fallback
     return (
       <TextField
+        key={propertyKey}
         fullWidth
         margin="dense"
-        label={property.charAt(0).toUpperCase() + property.slice(1)}
-        type="number"
+        label={propertyDef.label}
         value={value}
-        onChange={(e) => handlePropertyChange(property, Number(e.target.value))}
+        onChange={(e) => handlePropertyChange(propertyKey, e.target.value)}
       />
     );
   };
@@ -258,11 +298,9 @@ function EquipmentCreator({equipmentList, setEquipmentList}: {
           <Typography variant="subtitle1" gutterBottom>
             Equipment Properties
           </Typography>
-          {selectedClass.properties.map((property) => (
-            <Box key={property}>
-              {renderPropertyInput(property)}
-            </Box>
-          ))}
+          {Object.entries(selectedClass.inputProperties).map(([propertyKey, propertyDef]) =>
+            renderPropertyInput(propertyKey, propertyDef)
+          )}
         </Box>
       )}
 

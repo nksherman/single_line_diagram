@@ -1,4 +1,4 @@
-import { EquipmentBase } from './equipmentBase';
+import { EquipmentBase, type InputPropertiesDefinition } from './equipmentBase';
 import type { EquipmentBaseData, EquipmentType } from '../types/equipment.types';
 
 import generatorSymbol from '../../public/icons/generator.svg';
@@ -14,27 +14,6 @@ export interface GeneratorProperties {
   isOnline: boolean;
 }
 
-export function generatorValidation(properties: Partial<GeneratorProperties>): string[] {
-  const errors: string[] = [];
-  
-  if (!properties.capacity || properties.capacity <= 0) {
-    errors.push('Capacity must be a positive number');
-  }
-  
-  if (!properties.voltage || properties.voltage <= 0) {
-    errors.push('Voltage must be a positive number');
-  }
-  
-  if (!properties.fuelType) {
-    errors.push('Fuel type is required');
-  }
-  
-  if (typeof properties.efficiency !== 'number' || properties.efficiency < 0 || properties.efficiency > 100) {
-    errors.push('Efficiency must be a percentage between 0 and 100');
-  }
-  
-  return errors;
-}
 
 export interface GeneratorEquipmentData extends EquipmentBaseData, GeneratorProperties {}
 
@@ -64,12 +43,50 @@ export class Generator extends EquipmentBase {
     this.isOnline = properties.isOnline;
   }
 
-  static inputProperties: string[] = [
-    "capacity",
-    "voltage",
-    "fuelType",
-    "efficiency"
-  ]
+  static inputProperties: InputPropertiesDefinition = {
+    capacity: {
+      type: 'number',
+      label: 'Capacity (MW)',
+      defaultValue: 10,
+      validation: (value: number) => {
+        if (value <= 0) {
+          return 'Capacity must be a positive number';
+        }
+      }
+    },
+    voltage: {
+      type: 'number',
+      label: 'Voltage (kV)',
+      defaultValue: 13.8,
+      validation: (value: number) => {
+        if (value <= 0) {
+          return 'Voltage must be a positive number';
+        }
+      }
+    },
+    fuelType: {
+      type: 'select',
+      label: 'Fuel Type',
+      defaultValue: 'natural_gas',
+      options: ['natural_gas', 'diesel', 'solar', 'wind', 'hydro', 'nuclear', 'coal'],
+      validation: (value: string) => {
+        const validFuels = ['natural_gas', 'diesel', 'solar', 'wind', 'hydro', 'nuclear', 'coal'];
+        if (!validFuels.includes(value)) {
+          return 'Invalid fuel type';
+        }
+      }
+    },
+    efficiency: {
+      type: 'number',
+      label: 'Efficiency (%)',
+      defaultValue: 85,
+      validation: (value: number) => {
+        if (value < 0 || value > 100) {
+          return 'Efficiency must be between 0 and 100';
+        }
+      }
+    }
+  }
 
   start(): void {
     this.isOnline = true;

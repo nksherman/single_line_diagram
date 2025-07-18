@@ -1,4 +1,4 @@
-import { EquipmentBase } from './equipmentBase';
+import { EquipmentBase, type InputPropertiesDefinition } from './equipmentBase';
 import type { EquipmentBaseData, EquipmentType } from '../types/equipment.types';
 
 /**
@@ -15,30 +15,6 @@ export interface TransformerProperties {
   isOperational: boolean;
 }
 
-export function transformerValidation(properties: Partial<TransformerProperties>): string[] {
-  const errors: string[] = [];
-
-  if (!properties.primaryVoltage || properties.primaryVoltage <= 0) {
-    errors.push('Primary voltage must be a positive number');
-  }
-  if (!properties.secondaryVoltage || properties.secondaryVoltage <= 0) {
-    errors.push('Secondary voltage must be a positive number');
-  }
-  if (!properties.powerRating || properties.powerRating <= 0) {
-    errors.push('Power rating must be a positive number');
-  }
-  if (!properties.phaseCount || (properties.phaseCount !== 1 && properties.phaseCount !== 3)) {
-    errors.push('Phase count must be 1 or 3');
-  }
-  if (!properties.connectionType) {
-    errors.push('Connection type is required');
-  }
-  if (!properties.impedance || properties.impedance <= 0) {
-    errors.push('Impedance must be a positive number');
-  }
-  
-  return errors;
-}
 
 export interface TransformerEquipmentData extends EquipmentBaseData, TransformerProperties {}
 
@@ -73,14 +49,70 @@ class Transformer extends EquipmentBase {
     this.isOperational = properties.isOperational;
   }
 
-  static inputProperties: string[] = [
-    "primaryVoltage",
-    "secondaryVoltage",
-    "powerRating",
-    "phaseCount",
-    "connectionType",
-    "impedance"
-  ]
+  static inputProperties: InputPropertiesDefinition = {
+    primaryVoltage: {
+      type: 'number',
+      label: 'Primary Voltage (kV)',
+      defaultValue: 13.8,
+      validation: (value: number) => {
+        if (value <= 0) {
+          return 'Primary voltage must be a positive number';
+        }
+      }
+    },
+    secondaryVoltage: {
+      type: 'number',
+      label: 'Secondary Voltage (kV)',
+      defaultValue: 4.16,
+      validation: (value: number) => {
+        if (value <= 0) {
+          return 'Secondary voltage must be a positive number';
+        }
+      }
+    },
+    powerRating: {
+      type: 'number',
+      label: 'Power Rating (MVA)',
+      defaultValue: 25,
+      validation: (value: number) => {
+        if (value <= 0) {
+          return 'Power rating must be a positive number';
+        }
+      }
+    },
+    phaseCount: {
+      type: 'select',
+      label: 'Phase Count',
+      defaultValue: 3,
+      options: [1, 3],
+      validation: (value: number) => {
+        if (value !== 1 && value !== 3) {
+          return 'Phase count must be 1 or 3';
+        }
+      }
+    },
+    connectionType: {
+      type: 'select',
+      label: 'Connection Type',
+      defaultValue: 'Wye',
+      options: ['Delta', 'Wye'],
+      validation: (value: string) => {
+        if (!['Delta', 'Wye'].includes(value)) {
+          return 'Connection type must be Delta or Wye';
+        }
+      }
+    },
+    impedance: {
+      type: 'number',
+      label: 'Impedance (%)',
+      defaultValue: 5.75,
+      validation: (value: number) => {
+        if (value <= 0) {
+          return 'Impedance must be a positive number';
+        }
+      }
+    }
+  }
 
   start(): void {
     this.isOperational = true;

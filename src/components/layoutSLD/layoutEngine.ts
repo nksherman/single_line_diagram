@@ -94,13 +94,22 @@ export class VerticalHierarchyLayout implements LayoutEngine {
     // Topological sort for vertical layers
     const layers = this.topologicalSort(graph);
     
-    // Position nodes in layers
-    const positionedNodes = this.positionNodesInLayers(nodes, layers);
+    // Create shared node map that will be updated throughout the process
+    const nodeMap = new Map(nodes.map(node => [node.id, node]));
     
-    // Calculate connection paths
-    const positionedConnections = this.calculateConnectionPaths(connections, positionedNodes);
+    // Position nodes in layers (updates the shared nodeMap)
+    this.positionNodesInLayers(nodeMap, layers);
     
-    return { nodes: positionedNodes, connections: positionedConnections };
+    // Calculate connection paths (uses and updates the shared nodeMap)
+    const positionedConnections = this.calculateConnectionPaths(connections, nodeMap);
+
+    // adjust the buses based on the new connections
+    this.adjustBusNodes(positionedConnections, nodeMap);
+
+    // Convert map back to array for final result
+    const finalNodes = Array.from(nodeMap.values());
+
+    return { nodes: finalNodes, connections: positionedConnections };
   }
 
   private buildGraph(nodes: DisplayNode[], connections: DisplayConnection[]): Map<string, Set<string>> {
@@ -180,10 +189,7 @@ export class VerticalHierarchyLayout implements LayoutEngine {
     return layers;
   }
 
-  private positionNodesInLayers(nodes: DisplayNode[], layers: string[][]): DisplayNode[] {
-    const nodeMap = new Map(nodes.map(node => [node.id, node]));
-    const positionedNodes: DisplayNode[] = [];
-    
+  private positionNodesInLayers(nodeMap: Map<string, DisplayNode>, layers: string[][]): void {
     layers.forEach((layer, layerIndex) => {
       const y = this.MARGIN + layerIndex * this.LAYER_SPACING;
       
@@ -202,25 +208,52 @@ export class VerticalHierarchyLayout implements LayoutEngine {
       layer.forEach(nodeId => {
         const node = nodeMap.get(nodeId);
         if (node) {
-          const positionedNode: DisplayNode = {
+          // Update the node in the shared map
+          nodeMap.set(nodeId, {
             ...node,
             position: { x: currentX, y }
-          };
-          positionedNodes.push(positionedNode);
+          });
           currentX += node.size.width + this.NODE_SPACING;
         }
       });
     });
+  }
+
+  private adjustBusNodes(positionedConnections: DisplayConnection[], nodeMap: Map<string, DisplayNode>): void {
+    const busNodes = Array.from(nodeMap.values()).filter(node => node.type === 'Bus');
+
+    busNodes.forEach(busNode => {
+      // Find all connections for this bus
+      const connections = positionedConnections.filter(conn => conn.sourceId === busNode.id || conn.targetId === busNode.id);
+      
+      if (connections.length > 0) {
+        // Calculate the required width based on connections
+        const minWidth = 60; // Minimum width for a bus
+        const connectionWidths = connections.map(conn => {
+          const sourceNode = nodeMap.get(conn.sourceId);
+          const targetNode = nodeMap.get(conn.targetId);
+          
+          if (sourceNode && targetNode) {
+            return Math.abs(sourceNode.position.x - targetNode.position.x) + Math.max(sourceNode.size.width, targetNode.size.width);
+          }
+          return 0;
+        });
+
+        const requiredWidth = Math.max(minWidth, ...connectionWidths) * 3 / 5;
+
+        // Update the bus node size and position
+        busNode.size.width = requiredWidth;
+        busNode.position.x -= (requiredWidth - busNode.size.width) / 2; // Center the bus
+      }
+    });
     
-    return positionedNodes;
+    // updated nodeMap
   }
 
   private calculateConnectionPaths(
     connections: DisplayConnection[], 
-    positionedNodes: DisplayNode[]
+    nodeMap: Map<string, DisplayNode>
   ): DisplayConnection[] {
-    const nodeMap = new Map(positionedNodes.map(node => [node.id, node]));
-    
     // Separate bus connections from regular connections
     const busConnections: DisplayConnection[] = [];
     const regularConnections: DisplayConnection[] = [];
@@ -246,43 +279,110 @@ export class VerticalHierarchyLayout implements LayoutEngine {
   }
 
   private calculateBusConnectionPaths(
-    connections: DisplayConnection[],
-    nodeMap: Map<string, DisplayNode>
-  ): DisplayConnection[] {
-    return connections.map(conn => {
-      const sourceNode = nodeMap.get(conn.sourceId);
-      const targetNode = nodeMap.get(conn.targetId);
+      connections: DisplayConnection[],
+      nodeMap: Map<string, DisplayNode>
+    ): DisplayConnection[] {
+      // Group connections by bus node to handle each bus separately
+      const connectionsByBus = new Map<string, DisplayConnection[]>();
       
-      if (!sourceNode || !targetNode) {
-        return { ...conn, points: [] };
-      }
-      
-      let points: number[];
-      
-      if (sourceNode.type === 'Bus') {
-        // Bus is source - straight vertical line from bus center to target top
-        const busX = sourceNode.position.x + sourceNode.size.width / 2;
-        const busY = sourceNode.position.y + sourceNode.size.height;
-        const targetX = targetNode.position.x + targetNode.size.width / 2;
-        const targetY = targetNode.position.y;
+      connections.forEach(conn => {
+        const sourceNode = nodeMap.get(conn.sourceId);
+        const targetNode = nodeMap.get(conn.targetId);
         
-        points = [busX, busY, targetX, targetY];
-      } else if (targetNode.type === 'Bus') {
-        // Bus is target - straight vertical line from source bottom to bus center
-        const sourceX = sourceNode.position.x + sourceNode.size.width / 2;
-        const sourceY = sourceNode.position.y + sourceNode.size.height;
-        const busX = targetNode.position.x + targetNode.size.width / 2;
-        const busY = targetNode.position.y;
+        let busNodeId: string;
+        if (sourceNode?.type === 'Bus') {
+          busNodeId = sourceNode.id;
+        } else if (targetNode?.type === 'Bus') {
+          busNodeId = targetNode.id;
+        } else {
+          return; // Skip if neither is a bus
+        }
         
-        points = [sourceX, sourceY, busX, busY];
-      } else {
-        // Fallback - shouldn't happen with current logic
-        points = [];
-      }
-      
-      return { ...conn, points };
-    });
-  }
+        const existing = connectionsByBus.get(busNodeId) || [];
+        existing.push(conn);
+        connectionsByBus.set(busNodeId, existing);
+      });
+  
+      const processedConnections: DisplayConnection[] = [];
+  
+      // Process each bus and its connections
+      connectionsByBus.forEach((busConnections, busNodeId) => {
+        const busNode = nodeMap.get(busNodeId);
+        if (!busNode) return;
+  
+        // Calculate all connection points for this bus
+        const connectionXPositions: number[] = [];
+        
+        busConnections.forEach(conn => {
+          const sourceNode = nodeMap.get(conn.sourceId);
+          const targetNode = nodeMap.get(conn.targetId);
+          
+          if (sourceNode?.type === 'Bus') {
+            // Bus is source - use target's X position
+            const targetX = targetNode!.position.x + targetNode!.size.width / 2;
+            connectionXPositions.push(targetX);
+          } else if (targetNode?.type === 'Bus') {
+            // Bus is target - use source's X position
+            const sourceX = sourceNode!.position.x + sourceNode!.size.width / 2;
+            connectionXPositions.push(sourceX);
+          }
+        });
+  
+        // Calculate the required bus dimensions and position
+        const minX = Math.min(...connectionXPositions);
+        const maxX = Math.max(...connectionXPositions);
+        const minBusWidth = 60; // Minimum bus width
+        const padding = 20; // Padding on each side of the bus
+        
+        // Calculate new bus position and width
+        const requiredWidth = Math.max(minBusWidth, maxX - minX + (padding * 2));
+        const newBusX = minX - padding;
+        
+        // Update the bus node in the nodeMap
+        const updatedBusNode = {
+          ...busNode,
+          position: { x: newBusX, y: busNode.position.y },
+          size: { width: requiredWidth, height: busNode.size.height }
+        };
+        nodeMap.set(busNodeId, updatedBusNode);
+  
+        // Now calculate connection paths with the updated bus dimensions
+        busConnections.forEach(conn => {
+          const sourceNode = nodeMap.get(conn.sourceId);
+          const targetNode = nodeMap.get(conn.targetId);
+          
+          if (!sourceNode || !targetNode) {
+            processedConnections.push({ ...conn, points: [] });
+            return;
+          }
+          
+          let points: number[];
+          
+          if (sourceNode.type === 'Bus') {
+            // Bus is source - straight vertical line from bus to target
+            const targetX = targetNode.position.x + targetNode.size.width / 2;
+            const busY = updatedBusNode.position.y + updatedBusNode.size.height;
+            const targetY = targetNode.position.y;
+            
+            points = [targetX, busY, targetX, targetY];
+          } else if (targetNode.type === 'Bus') {
+            // Bus is target - straight vertical line from source to bus
+            const sourceX = sourceNode.position.x + sourceNode.size.width / 2;
+            const sourceY = sourceNode.position.y + sourceNode.size.height;
+            const busY = updatedBusNode.position.y;
+            
+            points = [sourceX, sourceY, sourceX, busY];
+          } else {
+            // Fallback - shouldn't happen with current logic
+            points = [];
+          }
+          
+          processedConnections.push({ ...conn, points });
+        });
+      });
+  
+      return processedConnections;
+    }
 
   private calculateRegularConnectionPaths(
     connections: DisplayConnection[],

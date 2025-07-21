@@ -18,8 +18,8 @@ export interface BusEquipmentData extends EquipmentBaseData, BusProperties {}
 class Bus extends EquipmentBase {
   public voltage: number;
 
-  public allowedSources: number = 16;
-  public allowedLoads: number = 16;
+  public static allowedSources: number = 16;
+  public static allowedLoads: number = 16;
 
   constructor(
     id: string,

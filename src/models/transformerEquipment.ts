@@ -29,8 +29,8 @@ class Transformer extends EquipmentBase {
   public connectionType: 'Delta' | 'Wye';
   public impedance: number;
 
-  public allowedSources: number = 1;
-  public allowedLoads: number = 1;
+  public static allowedSources: number = 1;
+  public static allowedLoads: number = 1;
 
   // dynamic state variables
   public isOperational: boolean;

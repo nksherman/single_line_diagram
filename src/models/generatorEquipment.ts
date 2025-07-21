@@ -24,8 +24,8 @@ class Generator extends EquipmentBase {
   public fuelType: GeneratorProperties['fuelType'];
   public efficiency: number;
 
-  public allowedSources: number = 0;
-  public allowedLoads: number = 1;
+  public static allowedSources: number = 0;
+  public static allowedLoads: number = 1;
 
   // dynamic state variables
   public isOnline: boolean;

@@ -20,9 +20,37 @@ import Bus, { type BusProperties } from '../models/busEquipment';
 
 
 interface EquipmentClass {
-  name: string;
+  name: string;  
+  thisObject: new (id: string, name: string, properties: any) => EquipmentBase;
   inputProperties: Record<string, PropertyDefinition>;
+  maxSource: number;
+  maxLoad: number;
 }
+
+// Define available equipment classes
+const baseEquipment: EquipmentClass[] = [
+  { 
+    name: 'Generator', 
+    thisObject: Generator,
+    inputProperties: Generator.inputProperties,
+    maxSource: Generator.allowedSources,
+    maxLoad: Generator.allowedLoads,
+  },
+  { 
+    name: 'Transformer', 
+    thisObject: Transformer,
+    inputProperties: Transformer.inputProperties,
+    maxSource: Transformer.allowedSources,
+    maxLoad: Transformer.allowedLoads,
+  },
+  { 
+    name: 'Bus', 
+    thisObject: Bus,
+    inputProperties: Bus.inputProperties,
+    maxSource: Bus.allowedSources,
+    maxLoad: Bus.allowedLoads,
+  }
+];
 
 function EquipmentCreator({equipmentList, setEquipmentList}: {
   equipmentList: EquipmentBase[],
@@ -36,21 +64,6 @@ function EquipmentCreator({equipmentList, setEquipmentList}: {
   const [selectedLoads, setSelectedLoads] = useState<string[]>([]);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
-  // Define available equipment classes
-  const baseEquipment: EquipmentClass[] = [
-    { 
-      name: 'Generator', 
-      inputProperties: Generator.inputProperties,
-    },
-    { 
-      name: 'Transformer', 
-      inputProperties: Transformer.inputProperties,
-    },
-    { 
-      name: 'Bus', 
-      inputProperties: Bus.inputProperties,
-    }
-  ];
 
   // Get the selected equipment class
   const selectedClass = baseEquipment.find(eq => eq.name === selectedEquipmentType);
@@ -144,6 +157,32 @@ function EquipmentCreator({equipmentList, setEquipmentList}: {
       [property]: value
     }));
   };
+
+  // handle multiple selects for loads/sources
+  const handleSelectChange = (values: string | string[], source: boolean = false) => {
+
+    if (!selectedClass) return;
+
+    const maxSources = selectedClass.maxSource || 0;
+    const maxLoads = selectedClass.maxLoad || 0;
+
+    if (source) {
+      if (Array.isArray(values) && values.length > maxSources) {
+        setValidationErrors([`Cannot select more than ${maxSources} sources for ${selectedClass.name}`]);
+        return;
+      }
+
+      setSelectedSources(typeof values === 'string' ? values.split(',') : values);
+    } else {
+      if (Array.isArray(values) && values.length > maxLoads) {
+        setValidationErrors([`Cannot select more than ${maxLoads} loads for ${selectedClass.name}`]);
+        return;
+      }
+
+      setSelectedLoads(typeof values === 'string' ? values.split(',') : values);
+    }
+  };
+  
 
   // Validate properties based on equipment type
   const validateProperties = (): string[] => {
@@ -397,7 +436,7 @@ function EquipmentCreator({equipmentList, setEquipmentList}: {
         <Select
           multiple
           value={selectedSources}
-          onChange={(e) => setSelectedSources(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+          onChange={(e) => handleSelectChange(e.target.value, true)}
           input={<OutlinedInput label="Sources (Optional)" />}
           renderValue={(selected) => (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
@@ -424,7 +463,7 @@ function EquipmentCreator({equipmentList, setEquipmentList}: {
         <Select
           multiple
           value={selectedLoads}
-          onChange={(e) => setSelectedLoads(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+          onChange={(e) => handleSelectChange(e.target.value, false)}
           input={<OutlinedInput label="Loads (Optional)" />}
           renderValue={(selected) => (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>

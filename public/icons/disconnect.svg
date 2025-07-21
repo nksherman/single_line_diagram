@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" 
+xmlns:xlink="http://www.w3.org/1999/xlink" width="40px" height="40px" viewBox="0 0 40 40" version="1.1">
+    <defs>
+        <path id="line-source" d="
+          M 20,0 
+          L 20,15
+        " />
+        <path id="line-load" d="
+          M 20,40 
+          L 20,30
+          L 12, 15
+        " />
+    </defs>
+    <rect x="0" y="0" width="40" height="40" fill="white" stroke="black" stroke-width="1"/>
+    <use href="#line-source" fill="white" stroke="black" stroke-width="1"/>
+    <use href="#line-load" fill="white" stroke="black" stroke-width="1"/>
+</svg>

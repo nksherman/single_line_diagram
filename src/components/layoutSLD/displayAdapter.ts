@@ -54,8 +54,8 @@ class EquipmentDisplayAdapter {
     textElements.push({
       id: `${equipment.id}-name`,
       text: equipment.name,
-      position: 'bottom',
-      align: 'center',
+      position: 'top-right',
+      align: 'left',
       fontSize: 12
     });
 
@@ -131,7 +131,7 @@ class EquipmentDisplayAdapter {
       {
         id: `${transformer.id}-phase-count`,
         text: `${transformer.phaseCount} Phases`,
-        position: 'right-bottom',
+        position: 'right',
         align: 'left',
         fontSize: 10,
         offset: { x: 5, y: 0 }
@@ -139,8 +139,8 @@ class EquipmentDisplayAdapter {
       {
         id: `${transformer.id}-connection-type`,
         text: transformer.connectionType,
-        position: 'bottom',
-        align: 'center',
+        position: 'right-bottom',
+        align: 'left',
         fontSize: 10,
         color: 'orange'
       }
@@ -153,7 +153,7 @@ class EquipmentDisplayAdapter {
       {
         id: `${bus.id}-voltage`,
         text: `${bus.voltage}kV`,
-        position: 'left-top',
+        position: 'top-left',
         align: 'center',
         fontSize: 10,
         color: 'blue'

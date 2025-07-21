@@ -1,4 +1,4 @@
-import type { DisplayNode, DisplayConnection } from './displayAdapter';
+import type { TextElement, DisplayNode, DisplayConnection } from './displayAdapter';
 import { calculateConnectionPaths, MultiSourcePathCalculator } from './pathingUtils';
 
 
@@ -189,6 +189,28 @@ export class VerticalHierarchyLayout implements LayoutEngine {
     return layers;
   }
 
+  private _calculateNodeWidth(node: DisplayNode): number {
+    // Calculate width based on node type and content
+
+    let width = node?.size.width || 0;
+
+    if (node.textElements && node.textElements.length > 0) {
+      // get the max width left and right
+      const charWidth = 6;
+
+      width += node.textElements
+        .filter(textElement => textElement.position.startsWith('left'))
+        .reduce((max, textElement) => Math.max(max, textElement.text.length * charWidth), 0);
+
+      width += node.textElements
+        .filter(textElement => textElement.position.startsWith('right'))
+        .reduce((max, textElement) => Math.max(max, textElement.text.length * charWidth), 0);
+
+    }
+
+    return width;
+  }
+
   private positionNodesInLayers(nodeMap: Map<string, DisplayNode>, layers: string[][]): void {
     layers.forEach((layer, layerIndex) => {
       const y = this.MARGIN + layerIndex * this.LAYER_SPACING;
@@ -196,7 +218,7 @@ export class VerticalHierarchyLayout implements LayoutEngine {
       // Calculate total width needed for this layer
       const totalNodeWidth = layer.reduce((sum, nodeId) => {
         const node = nodeMap.get(nodeId);
-        return sum + (node?.size.width || 0);
+        return sum + (node ? this._calculateNodeWidth(node) : 0);
       }, 0);
       
       const totalSpacing = (layer.length - 1) * this.NODE_SPACING;
@@ -213,7 +235,7 @@ export class VerticalHierarchyLayout implements LayoutEngine {
             ...node,
             position: { x: currentX, y }
           });
-          currentX += node.size.width + this.NODE_SPACING;
+          currentX += this._calculateNodeWidth(node) + this.NODE_SPACING;
         }
       });
     });

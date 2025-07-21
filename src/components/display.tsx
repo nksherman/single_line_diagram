@@ -4,11 +4,13 @@ import { Stage, Layer, Line } from 'react-konva';
 import { Box, Popover } from '@mui/material';
 
 import { EquipmentBase } from '../models/equipmentBase';
+
 import type { DisplayNode, DisplayConnection } from './layoutSLD/displayAdapter';
 import EquipmentDisplayAdapter from './layoutSLD/displayAdapter';
-
 import { VerticalHierarchyLayout } from './layoutSLD/layoutEngine';
 import EquipmentComponent from './layoutSLD/equipmentComponent';
+
+import EditEquipment from './editEquipment';
 
 /**
  * Define a space for displaying equipment and connections in a single line diagram.
@@ -23,33 +25,48 @@ interface PopoverPosition {
   y: number;
 }
 
-function Display({ equipment }: { equipment: EquipmentBase[] }) {
+function Display({ equipmentList, setEquipmentList, handlePopoverOpen }: { 
+  equipmentList: EquipmentBase[]; setEquipmentList: (eq: EquipmentBase[]) => void; handlePopoverOpen: (content: ReactNode, anchorElement: HTMLElement | null) => void }) {
   const [layout, setLayout] = useState<{ nodes: DisplayNode[], connections: DisplayConnection[] }>();
-  const [popoverPosition, setPopoverPosition] = useState<PopoverPosition | null>(null);
-  const [popoverContent, setPopoverContent] = useState<ReactNode | null>(null);
-  
+  const [popoverPositionKonva, setPopoverPositionKonva] = useState<PopoverPosition | null>(null);
+  const [popoverContentKonva, setPopoverContentKonva] = useState<ReactNode | null>(null);
+
   // Handle Konva-specific popover opening at mouse position
   const handleKonvaPopoverOpen = (position: PopoverPosition, content: ReactNode) => {
-    setPopoverPosition(position);
-    setPopoverContent(content);
+    setPopoverPositionKonva(position);
+    setPopoverContentKonva(content);
   };
-  
+
   const handleKonvaPopoverClose = () => {
-    setPopoverPosition(null);
-    setPopoverContent(null);
+    setPopoverPositionKonva(null);
+    setPopoverContentKonva(null);
   };
+
+  const handleEditEquipment = (equipmentSubject: EquipmentBase) => {
+    // Handle editing of equipment properties
+    const editContent = (
+      <EditEquipment
+        equipmentSubject={equipmentSubject}
+        setEquipmentList={setEquipmentList}
+        equipmentList={equipmentList}
+      />
+    );
+
+    handlePopoverOpen(editContent, null);
+    handleKonvaPopoverClose();
+  }
   
   useEffect(() => {
     // Convert equipment to display data
-    const nodes = EquipmentDisplayAdapter.toDisplayNodes(equipment);
-    const connections = EquipmentDisplayAdapter.toDisplayConnections(equipment);
+    const nodes = EquipmentDisplayAdapter.toDisplayNodes(equipmentList);
+    const connections = EquipmentDisplayAdapter.toDisplayConnections(equipmentList);
     
     // Calculate layout
     const layoutEngine = new VerticalHierarchyLayout();
     const calculatedLayout = layoutEngine.calculateLayout(nodes, connections);
     
     setLayout(calculatedLayout);
-  }, [equipment]);
+  }, [equipmentList]);
   
   if (!layout) return null;
   
@@ -64,16 +81,21 @@ function Display({ equipment }: { equipment: EquipmentBase[] }) {
           
           {/* Render equipment nodes */}
           {layout.nodes.map(node => 
-            <EquipmentComponent key={node.id} node={node} handleKonvaPopoverOpen={handleKonvaPopoverOpen} />
+            <EquipmentComponent 
+              key={node.id} 
+              node={node} 
+              handleKonvaPopoverOpen={handleKonvaPopoverOpen} 
+              handleEditEquipment={handleEditEquipment}
+            />
           )}
         </Layer>
       </Stage>
       
       {/* Konva-specific Popover */}
       <Popover
-        open={Boolean(popoverContent)}
+        open={Boolean(popoverContentKonva)}
         anchorReference="anchorPosition"
-        anchorPosition={popoverPosition ? { top: popoverPosition.y, left: popoverPosition.x } : undefined}
+        anchorPosition={popoverPositionKonva ? { top: popoverPositionKonva.y, left: popoverPositionKonva.x } : undefined}
         onClose={handleKonvaPopoverClose}
         anchorOrigin={{
           vertical: 'bottom',
@@ -85,7 +107,7 @@ function Display({ equipment }: { equipment: EquipmentBase[] }) {
         }}
         disableRestoreFocus
       >
-        {popoverContent}
+        {popoverContentKonva}
       </Popover>
     </Box>
   );

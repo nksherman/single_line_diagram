@@ -4,9 +4,11 @@ import useImage from 'use-image';
 import { Group, Rect, Text, Image } from 'react-konva';
 
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 
 import type { DisplayNode, TextElement } from './displayAdapter';
+import type EquipmentBase from '../../models/equipmentBase';
 
 interface PopoverPosition {
   x: number;
@@ -16,9 +18,10 @@ interface PopoverPosition {
 interface EquipmentComponentProps {
   node: DisplayNode;
   handleKonvaPopoverOpen: (position: PopoverPosition, content: ReactNode) => void;
+  handleEditEquipment: (equipmentSubject: EquipmentBase) => void;
 }
 
-function EquipmentComponent({ node, handleKonvaPopoverOpen }: EquipmentComponentProps) {
+function EquipmentComponent({ node, handleKonvaPopoverOpen, handleEditEquipment }: EquipmentComponentProps) {
   const [image] = useImage(node.iconPath);
 
   const getTextPosition = (textElement: TextElement) => {
@@ -119,6 +122,14 @@ function EquipmentComponent({ node, handleKonvaPopoverOpen }: EquipmentComponent
             </Typography>
           </Box>
         ))}
+        <Button
+          onClick={() => handleEditEquipment(node.equipment)}
+          variant="outlined"
+          size="small"
+          sx={{ marginTop: 1 }}
+        >
+          Edit
+        </Button>
       </Box>
     );
     

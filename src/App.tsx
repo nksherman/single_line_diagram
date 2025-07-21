@@ -76,9 +76,9 @@ function App() {
 
 
   /* handle popout info and formula */  
-  const handlePopoverOpen = (anchorElement: HTMLElement, content: ReactNode) => {
-    setAnchorEl(anchorElement);
+  const handlePopoverOpen = (content: ReactNode , anchorElement: HTMLElement | null = null) => {
     setPopoverContent(content);
+    setAnchorEl(anchorElement);
   };
   
   const handlePopoverClose = () => {
@@ -93,7 +93,7 @@ function App() {
         <ReactMarkdown>{patchNotesText}</ReactMarkdown>
       </Box>
     );
-    handlePopoverOpen(event.currentTarget, patchNotesContent);
+    handlePopoverOpen(patchNotesContent, event.currentTarget );
   };
 
   return (
@@ -131,25 +131,45 @@ function App() {
           
           {/* Display */}
           <Box sx={{ flex: 1 }}>
-            <Display equipment={equipment} />
+            <Display 
+              equipmentList={equipment} 
+              setEquipmentList={setEquipment}
+              handlePopoverOpen={handlePopoverOpen}
+            />
           </Box>
         </Box>
       </Box>
 
       {/*  Popover anywhere */}
       <Popover
-        open={Boolean(anchorEl) && Boolean(popoverContent)}
+        open={Boolean(popoverContent)}
         anchorEl={anchorEl}
         onClose={handlePopoverClose}
-        anchorOrigin={{
+        anchorOrigin={anchorEl ? {
           vertical: 'bottom',
           horizontal: 'left',
+        } : {
+          vertical: 'center',
+          horizontal: 'center',
         }}
-        transformOrigin={{
+        transformOrigin={anchorEl ? {
           vertical: 'top',
           horizontal: 'right',
+        } : {
+          vertical: 'center',
+          horizontal: 'center',
         }}
         disableRestoreFocus
+        {...(!anchorEl && {
+          sx: {
+            '& .MuiPopover-paper': {
+              position: 'fixed',
+              top: '70%',
+              left: '70%',
+              transform: 'translate(-70%, -70%)',
+            }
+          }
+        })}
       >
         {popoverContent}
       </Popover>

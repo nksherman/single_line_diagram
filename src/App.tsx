@@ -7,6 +7,8 @@ import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 import Popover from '@mui/material/Popover'
+import Chip from '@mui/material/Chip'
+import ReactMarkdown from 'react-markdown'
 
 import Display from './components/display'
 import EquipmentCreator from './components/equipmentCreator'
@@ -16,6 +18,8 @@ import Generator from './models/generatorEquipment'
 import Transformer from './models/transformerEquipment'
 import Bus from './models/busEquipment';
 
+import patchNotesText from '../public/patchHistory.txt?raw'
+import extractVersionNumber from './utils/extractVersionNumber'
 
 function defaultEquipment(): EquipmentBase[] {
   EquipmentBase.clearRegistry();
@@ -62,6 +66,7 @@ function defaultEquipment(): EquipmentBase[] {
   return [generator1, bus1, tx1, tx2];
 }
 
+const versionNumber = extractVersionNumber(patchNotesText);
 
 function App() {
   const [equipment, setEquipment] = useState<EquipmentBase[]>(() => defaultEquipment());
@@ -81,10 +86,34 @@ function App() {
     setPopoverContent(null);
   };
 
+  /* handle version popover */
+  const handleVersionClick = (event: React.MouseEvent<HTMLElement>) => {
+    const patchNotesContent = (
+      <Box sx={{ p: 2, maxWidth: 600, maxHeight: 400, overflow: 'auto' }}>
+        <ReactMarkdown>{patchNotesText}</ReactMarkdown>
+      </Box>
+    );
+    handlePopoverOpen(event.currentTarget, patchNotesContent);
+  };
+
   return (
     <Paper>
       <Box sx={{ p: 2 }}>
-        <Typography variant="h2" gutterBottom>Single Line Diagram</Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h2">Single Line Diagram</Typography>
+          <Chip
+            label={versionNumber}
+            onClick={handleVersionClick}
+            clickable
+            variant="outlined"
+            sx={{ 
+              cursor: 'pointer',
+              '&:hover': {
+                backgroundColor: 'action.hover'
+              }
+            }}
+          />
+        </Box>
         
         <Box sx={{ display: 'flex', gap: 2 }}>
           {/* Equipment Creator */}

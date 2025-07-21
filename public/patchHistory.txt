@@ -1,0 +1,13 @@
+# Single Line Diagram - Patch Notes
+
+
+## v0.0.0 - Core Features
+**Released:** January 10, 2025  
+**Type:** Minor Release
+
+Implementation of core equipment types and basic diagram rendering.
+
+### Added ✅
+- Basic equipment models (Generator, Transformer, Bus)
+- Diagram rendering engine
+- Equipment connection system

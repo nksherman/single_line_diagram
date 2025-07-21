@@ -135,27 +135,26 @@ function EquipmentComponent({ node, handleKonvaPopoverOpen }: EquipmentComponent
       x={node.position.x}
       y={node.position.y}
     >
-      {/* Background rectangle */}
-      <Rect
-        width={node.size.width}
-        height={node.size.height}
-        fill="white"
-        stroke="black"
-        strokeWidth={1}
-      />
-      
       {/* Equipment icon */}
-      {image && (
+
+      {image ?  (
         <Image
           image={image}
-          width={node.size.width - 4}
-          height={node.size.height - 4}
-          x={2}
-          y={2}
+          width={node.size.width}
+          height={node.size.height}
+          onClick={(e) => handleClick(e)}
+        />
+      ) : (
+        <Rect
+          width={node.size.width}
+          height={node.size.height}
+          fill="lightgray"
+          stroke="black"
+          strokeWidth={1}
           onClick={(e) => handleClick(e)}
         />
       )}
-      
+
       {/* Render all text elements */}
       {node.textElements.map(textElement => {
         const textPos = getTextPosition(textElement);

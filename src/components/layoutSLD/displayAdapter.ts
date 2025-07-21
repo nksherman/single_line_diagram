@@ -39,7 +39,7 @@ class EquipmentDisplayAdapter {
     const sizes: Record<string, { width: number; height: number }> = {
       Generator: { width: 40, height: 40 },
       Transformer: { width: 50, height: 40 },
-      Bus: { width: 60, height: 8 }, // Initial size - will be updated by layout engine
+      Bus: { width: 60, height: 4 },
       Load: { width: 30, height: 30 },
       // Add more equipment types as needed
     };

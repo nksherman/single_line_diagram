@@ -366,6 +366,7 @@ export class VerticalHierarchyLayout implements LayoutEngine {
           position: { x: newBusX, y: busNode.position.y },
           size: { width: requiredWidth, height: busNode.size.height }
         };
+
         nodeMap.set(busNodeId, updatedBusNode);
   
         // Now calculate connection paths with the updated bus dimensions

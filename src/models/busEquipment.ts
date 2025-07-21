@@ -8,6 +8,9 @@ import type { EquipmentBaseData, EquipmentType } from '../types/equipment.types'
  */
 export interface BusProperties {
   voltage: number; // kV
+  allowedSources?: number; // Optional, default is 16
+  allowedLoads?: number; // Optional, default is 16
+
 }
 
 export interface BusEquipmentData extends EquipmentBaseData, BusProperties {}
@@ -18,8 +21,11 @@ export interface BusEquipmentData extends EquipmentBaseData, BusProperties {}
 class Bus extends EquipmentBase {
   public voltage: number;
 
-  public static allowedSources: number = 16;
+  public static allowedSources: number = 1;
   public static allowedLoads: number = 16;
+
+  public allowedSources: number = Bus.allowedSources;
+  public allowedLoads: number = Bus.allowedLoads;
 
   constructor(
     id: string,
@@ -29,6 +35,9 @@ class Bus extends EquipmentBase {
     super(id, name, 'Bus' as EquipmentType);
     
     this.voltage = properties.voltage;
+
+    this.allowedSources = properties.allowedSources ?? Bus.allowedSources;
+    this.allowedLoads = properties.allowedLoads ?? Bus.allowedLoads;
   }
 
   static inputProperties: InputPropertiesDefinition = {
@@ -39,6 +48,26 @@ class Bus extends EquipmentBase {
       validation: (value: number) => {
         if (value <= 0) {
           return 'Voltage must be a positive number';
+        }
+      }
+    },
+    allowedSources: {
+      type: 'number',
+      label: 'Source Connections (Max)',
+      defaultValue: Bus.allowedSources,
+      validation: (value: number) => {
+        if (value < 0) {
+          return 'Allowed sources must be a non-negative number';
+        }
+      }
+    },
+    allowedLoads: {
+      type: 'number',
+      label: 'Load Connections (Max)',
+      defaultValue: Bus.allowedLoads,
+      validation: (value: number) => {
+        if (value < 0) {
+          return 'Allowed loads must be a non-negative number';
         }
       }
     }

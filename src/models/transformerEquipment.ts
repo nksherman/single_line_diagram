@@ -32,6 +32,9 @@ class Transformer extends EquipmentBase {
   public static allowedSources: number = 1;
   public static allowedLoads: number = 1;
 
+  public allowedSources: number = Transformer.allowedSources;
+  public allowedLoads: number = Transformer.allowedLoads;
+
   // dynamic state variables
   public isOperational: boolean;
 

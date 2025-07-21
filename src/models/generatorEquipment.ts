@@ -27,6 +27,9 @@ class Generator extends EquipmentBase {
   public static allowedSources: number = 0;
   public static allowedLoads: number = 1;
 
+  public allowedSources: number = Generator.allowedSources;
+  public allowedLoads: number = Generator.allowedLoads;
+
   // dynamic state variables
   public isOnline: boolean;
 

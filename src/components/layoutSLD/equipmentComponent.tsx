@@ -136,7 +136,6 @@ function EquipmentComponent({ node, handleKonvaPopoverOpen }: EquipmentComponent
       y={node.position.y}
     >
       {/* Equipment icon */}
-
       {image ?  (
         <Image
           image={image}

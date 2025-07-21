@@ -4,6 +4,7 @@ import type { EquipmentBaseData, EquipmentType } from '../../types/equipment.typ
 import Generator from '../../models/generatorEquipment';
 import Transformer from '../../models/transformerEquipment';
 import Bus from '../../models/busEquipment';
+import Meter from '../../models/meterEquipment';
 
 export interface TextElement {
   id: string;
@@ -24,6 +25,7 @@ export interface DisplayNode {
   iconPath: string;
   textElements: TextElement[];
   metadata: Record<string, any>;
+  equipment: EquipmentBase; // Optional, for direct equipment reference
 }
 
 export interface DisplayConnection {
@@ -39,7 +41,7 @@ class EquipmentDisplayAdapter {
     const sizes: Record<string, { width: number; height: number }> = {
       Generator: { width: 40, height: 40 },
       Transformer: { width: 50, height: 40 },
-      Bus: { width: 60, height: 4 },
+      Bus: { width:  60, height: 4 },
       Load: { width: 30, height: 30 },
       // Add more equipment types as needed
     };
@@ -66,6 +68,8 @@ class EquipmentDisplayAdapter {
       textElements.push(...this.getTransformerTextElements(equipment));
     } else if (equipment instanceof Bus) {
       textElements.push(...this.getBusTextElements(equipment));
+    } else if (equipment instanceof Meter) {
+      textElements.push(...this.getMeterTextElements(equipment));
     }
 
     return textElements;
@@ -161,6 +165,43 @@ class EquipmentDisplayAdapter {
     ];
   }
 
+  private static getMeterTextElements(meter: Meter): TextElement[] {
+    return [
+      {
+        id: `${meter.id}-voltage`,
+        text: `${meter.voltageRating}kV`,
+        position: 'top-left',
+        align: 'right',
+        fontSize: 10,
+        color: 'blue'
+      },
+      {
+        id: `${meter.id}-current`,
+        text: `${meter.currentRating}A`,
+        position: 'right',
+        align: 'left',
+        fontSize: 10,
+        color: 'green'
+      },
+      {
+        id: `${meter.id}-accuracy`,
+        text: `Class ${meter.accuracyClass}`,
+        position: 'right-bottom',
+        align: 'left',
+        fontSize: 10,
+        color: 'orange'
+      },
+      {
+        id: `${meter.id}-status`,
+        text: meter.isOperational ? 'Operational' : 'Not Operational',
+        position: 'bottom-left',
+        align: 'right',
+        fontSize: 10,
+        color: meter.isOperational ? 'green' : 'red'
+      }
+    ];
+  }
+
   static toDisplayNodes(equipment: EquipmentBase[]): DisplayNode[] {
     return equipment.map(eq => ({
       id: eq.id,
@@ -170,7 +211,8 @@ class EquipmentDisplayAdapter {
       label: eq.name,
       iconPath: `/icons/${eq.type.toLowerCase()}.svg`,
       textElements: this.getTextElements(eq),
-      metadata: { ...eq.metadata }
+      metadata: { ...eq.metadata },
+      equipment: eq
     }));
   }
   

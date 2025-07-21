@@ -17,11 +17,11 @@ import { EquipmentBase, type PropertyDefinition } from '../models/equipmentBase'
 import Generator, { type GeneratorProperties } from '../models/generatorEquipment';
 import Transformer, { type TransformerProperties } from '../models/transformerEquipment';
 import Bus, { type BusProperties } from '../models/busEquipment';
+import Meter, {type MeterProperties} from '../models/meterEquipment';
 
 
 interface EquipmentClass {
   name: string;  
-  thisObject: new (id: string, name: string, properties: any) => EquipmentBase;
   inputProperties: Record<string, PropertyDefinition>;
   maxSource: number;
   maxLoad: number;
@@ -31,24 +31,27 @@ interface EquipmentClass {
 const baseEquipment: EquipmentClass[] = [
   { 
     name: 'Generator', 
-    thisObject: Generator,
     inputProperties: Generator.inputProperties,
     maxSource: Generator.allowedSources,
     maxLoad: Generator.allowedLoads,
   },
   { 
     name: 'Transformer', 
-    thisObject: Transformer,
     inputProperties: Transformer.inputProperties,
     maxSource: Transformer.allowedSources,
     maxLoad: Transformer.allowedLoads,
   },
   { 
     name: 'Bus', 
-    thisObject: Bus,
     inputProperties: Bus.inputProperties,
     maxSource: Bus.allowedSources,
     maxLoad: Bus.allowedLoads,
+  },
+  {
+    name: "Meter",
+    inputProperties: Meter.inputProperties,
+    maxSource: Meter.allowedSources,
+    maxLoad: Meter.allowedLoads,
   }
 ];
 
@@ -265,6 +268,13 @@ function EquipmentCreator({equipmentList, setEquipmentList}: {
           ...propertyValues
         } as BusProperties;
         newEquipment = new Bus(id, equipmentName, props);
+
+      } else if (selectedEquipmentType === 'Meter') {
+        const props = {
+          ...propertyValues,
+          isOperational: false // Default state
+        } as MeterProperties;
+        newEquipment = new Meter(id, equipmentName, props);
 
       } else {
         throw new Error('Unsupported equipment type');

@@ -36,6 +36,9 @@ export class EquipmentBase {
 
   public static allowedSources: number = 1;
   public static allowedLoads: number = 1;
+
+  public allowedSources: number = EquipmentBase.allowedSources;
+  public allowedLoads: number = EquipmentBase.allowedLoads;
   
   constructor(id: string, name: string, type: EquipmentType) {
     if (EquipmentBase.registry.has(id)) {
@@ -212,3 +215,5 @@ export class EquipmentBase {
     return `EquipmentBase(${this.id}: ${this.name} [${this.type}])`;
   }
 }
+
+export default EquipmentBase;

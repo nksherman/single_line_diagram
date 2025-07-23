@@ -24,7 +24,7 @@ export interface DisplayNode {
   iconPath: string;
   textElements: TextElement[];
   metadata: Record<string, any>;
-  equipment: EquipmentBase; // Optional, for direct equipment reference
+  equipment: EquipmentBase;
 }
 
 export interface DisplayConnection {

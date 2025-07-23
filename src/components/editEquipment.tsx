@@ -6,8 +6,13 @@ import Typography from '@mui/material/Typography';
 import EquipmentBase from '../models/equipmentBase';
 import Generator from '../models/generatorEquipment';
 import Bus from '../models/busEquipment';
+import Transformer from '../models/transformerEquipment';
+import MeterEquipment from '../models/meterEquipment';
+
 import GeneratorEditor from './modelComponents/generatorEditor';
 import BusEditor from './modelComponents/busEditor';
+import TransformerEditor from './modelComponents/transformerEditor';
+import MeterEditor from './modelComponents/meterEditor';
 
 /**
  * Component to edit some equipment after creation.
@@ -29,13 +34,26 @@ function EditEquipment({ equipmentSubject, equipmentList, setEquipmentList }: {
         setEquipmentList={setEquipmentList}
       />
     );
-  }
-
-  // Check if the equipment is a Bus
-  if (equipmentSubject instanceof Bus) {
+  } else if (equipmentSubject instanceof Bus) {
     return (
       <BusEditor
         bus={equipmentSubject}
+        equipmentList={equipmentList}
+        setEquipmentList={setEquipmentList}
+      />
+    );
+  } else if (equipmentSubject instanceof Transformer) {
+    return (
+      <TransformerEditor
+        transformer={equipmentSubject}
+        equipmentList={equipmentList}
+        setEquipmentList={setEquipmentList}
+      />
+    );
+  } else if (equipmentSubject instanceof MeterEquipment) {
+    return (
+      <MeterEditor
+        meter={equipmentSubject}
         equipmentList={equipmentList}
         setEquipmentList={setEquipmentList}
       />

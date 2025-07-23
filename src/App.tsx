@@ -18,7 +18,7 @@ import Generator from './models/generatorEquipment'
 import Transformer from './models/transformerEquipment'
 import Bus from './models/busEquipment';
 
-import patchNotesText from '../public/patchHistory.txt?raw'
+import patchNotesText from '/patchHistory.txt?raw' 
 import extractVersionNumber from './utils/extractVersionNumber'
 
 function defaultEquipment(): EquipmentBase[] {

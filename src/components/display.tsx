@@ -75,19 +75,19 @@ function Display({ equipmentList, setEquipmentList, handlePopoverOpen }: {
       <Stage width={window.innerWidth} height={window.innerHeight}>
         <Layer>
           {/* Render connections first (behind equipment) */}
-          {layout.connections.map(conn => 
+          {layout.connections.map(conn => (
             <Line key={conn.id} points={conn.points} stroke="black" />
-          )}
-          
+          ))}
+
           {/* Render equipment nodes */}
-          {layout.nodes.map(node => 
-            <EquipmentComponent 
-              key={node.id} 
-              node={node} 
+          {layout.nodes.map(node => (
+            <EquipmentComponent
+              key={node.id}
+              node={node}
               handleKonvaPopoverOpen={handleKonvaPopoverOpen} 
-              handleEditEquipment={handleEditEquipment}
+              handleEditEquipment={() => {handleEditEquipment(node.equipment)}}
             />
-          )}
+          ))}
         </Layer>
       </Stage>
       

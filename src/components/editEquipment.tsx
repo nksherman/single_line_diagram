@@ -19,7 +19,7 @@ import BusEditor from './modelComponents/busEditor';
 
 function EditEquipment({ equipmentSubject, equipmentList, setEquipmentList }: { 
   equipmentSubject: EquipmentBase | null; equipmentList: EquipmentBase[]; setEquipmentList: (eq: EquipmentBase[]) => void }) {
-
+    
   // Check if the equipment is a Generator
   if (equipmentSubject instanceof Generator) {
     return (

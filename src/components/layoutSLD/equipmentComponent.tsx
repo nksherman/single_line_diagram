@@ -3,12 +3,10 @@ import useImage from 'use-image';
 
 import { Group, Rect, Text, Image } from 'react-konva';
 
-import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
-import Typography from '@mui/material/Typography';
-
 import type { DisplayNode, TextElement } from './displayAdapter';
 import type EquipmentBase from '../../models/equipmentBase';
+import KonvaEquipInfo from './konvaEquipPopover';
+
 
 interface PopoverPosition {
   x: number;
@@ -18,7 +16,7 @@ interface PopoverPosition {
 interface EquipmentComponentProps {
   node: DisplayNode;
   handleKonvaPopoverOpen: (position: PopoverPosition, content: ReactNode) => void;
-  handleEditEquipment: (equipmentSubject: EquipmentBase) => void;
+  handleEditEquipment: () => void;
 }
 
 function EquipmentComponent({ node, handleKonvaPopoverOpen, handleEditEquipment }: EquipmentComponentProps) {
@@ -114,23 +112,10 @@ function EquipmentComponent({ node, handleKonvaPopoverOpen, handleEditEquipment 
     event.evt.preventDefault();
     
     const content = (
-      <Box>
-        {node.textElements.map(te => (
-          <Box key={te.id} style={{ color: te.color || 'black' }}>
-            <Typography>
-              {te.text}
-            </Typography>
-          </Box>
-        ))}
-        <Button
-          onClick={() => handleEditEquipment(node.equipment)}
-          variant="outlined"
-          size="small"
-          sx={{ marginTop: 1 }}
-        >
-          Edit
-        </Button>
-      </Box>
+      <KonvaEquipInfo
+        equipment={node.equipment}
+        onEdit={() => handleEditEquipment()}
+      />
     );
     
     // Use mouse position for popover positioning

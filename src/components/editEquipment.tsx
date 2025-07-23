@@ -1,11 +1,13 @@
 
-import React, { useState } from 'react';
-
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 
 import EquipmentBase from '../models/equipmentBase';
+import Generator from '../models/generatorEquipment';
+import Bus from '../models/busEquipment';
+import GeneratorEditor from './modelComponents/generatorEditor';
+import BusEditor from './modelComponents/busEditor';
 
 /**
  * Component to edit some equipment after creation.
@@ -18,6 +20,27 @@ import EquipmentBase from '../models/equipmentBase';
 function EditEquipment({ equipmentSubject, equipmentList, setEquipmentList }: { 
   equipmentSubject: EquipmentBase | null; equipmentList: EquipmentBase[]; setEquipmentList: (eq: EquipmentBase[]) => void }) {
 
+  // Check if the equipment is a Generator
+  if (equipmentSubject instanceof Generator) {
+    return (
+      <GeneratorEditor
+        generator={equipmentSubject}
+        equipmentList={equipmentList}
+        setEquipmentList={setEquipmentList}
+      />
+    );
+  }
+
+  // Check if the equipment is a Bus
+  if (equipmentSubject instanceof Bus) {
+    return (
+      <BusEditor
+        bus={equipmentSubject}
+        equipmentList={equipmentList}
+        setEquipmentList={setEquipmentList}
+      />
+    );
+  }
 
   return (
     <Box sx={{ padding: 2 }}>
@@ -25,10 +48,11 @@ function EditEquipment({ equipmentSubject, equipmentList, setEquipmentList }: {
       {equipmentSubject ? (
         <>
           <Typography variant="subtitle1">{equipmentSubject.name}</Typography>
+          <Typography variant="body2">Type: {equipmentSubject.type}</Typography>
           <Box sx={{ marginTop: 2 }}>
-            {/* Render editable fields for the equipment */}
-            {/* Example: */}
+            {/* For non-Generator equipment, show basic info */}
             <Typography>Equipment Count: {equipmentList?.length || 0}</Typography>
+            <Typography>Editor for {equipmentSubject.type} equipment is not yet implemented.</Typography>
             <Button 
               variant="outlined" 
               onClick={() => {

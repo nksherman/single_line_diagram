@@ -1,6 +1,5 @@
-import type { TextElement, DisplayNode, DisplayConnection } from './displayAdapter';
+import type { DisplayNode, DisplayConnection } from './displayAdapter';
 import { calculateConnectionPaths, MultiSourcePathCalculator } from './pathingUtils';
-
 
 export interface VerticalSubAssembly {
 
@@ -15,7 +14,6 @@ export interface VerticalSubAssembly {
   position: { x: number; y: number }; // total position, set by layout engine
   boundPolygon: number[]; // Polygon points for the bounding box
 }
-
 
 export interface BusLayout {
   id: string;
@@ -97,17 +95,20 @@ export class VerticalHierarchyLayout implements LayoutEngine {
     // Create shared node map that will be updated throughout the process
     const nodeMap = new Map(nodes.map(node => [node.id, node]));
     
+    // Pre-calculate bus sizes based on their connections before positioning
+    this.precalculateBusSizes(nodeMap, connections, layers);
+    
     // Position nodes in layers (updates the shared nodeMap)
-    this.positionNodesInLayers(nodeMap, layers);
+    this.positionNodesInLayers(nodeMap, layers, connections);
     
     // Calculate connection paths (uses and updates the shared nodeMap)
     const positionedConnections = this.calculateConnectionPaths(connections, nodeMap);
 
-    // adjust the buses based on the new connections
-    this.adjustBusNodes(positionedConnections, nodeMap);
-
     // Convert map back to array for final result
     const finalNodes = Array.from(nodeMap.values());
+
+    // Debug logging
+    this.debugLayout(finalNodes, positionedConnections, layers);
 
     return { nodes: finalNodes, connections: positionedConnections };
   }
@@ -211,7 +212,67 @@ export class VerticalHierarchyLayout implements LayoutEngine {
     return width;
   }
 
-  private positionNodesInLayers(nodeMap: Map<string, DisplayNode>, layers: string[][]): void {
+  private precalculateBusSizes(
+    nodeMap: Map<string, DisplayNode>, 
+    connections: DisplayConnection[], 
+    layers: string[][]
+  ): void {
+    // Create a temporary positioning to estimate bus requirements
+    const tempNodeMap = new Map(nodeMap);
+    
+    // Do a preliminary positioning using the old simple method to get approximate positions
+    this.positionNodesInLayersSimple(tempNodeMap, layers);
+    
+    // Find all bus nodes
+    const busNodes = Array.from(nodeMap.values()).filter(node => node.type === 'Bus');
+    
+    busNodes.forEach(busNode => {
+      // Find all connections for this bus
+      const busConnections = connections.filter(conn => 
+        conn.sourceId === busNode.id || conn.targetId === busNode.id
+      );
+      
+      if (busConnections.length > 0) {
+        // Calculate connection X positions using the temporary positioning
+        const connectionXPositions: number[] = [];
+        
+        busConnections.forEach(conn => {
+          const tempSourceNode = tempNodeMap.get(conn.sourceId);
+          const tempTargetNode = tempNodeMap.get(conn.targetId);
+          
+          if (tempSourceNode?.type === 'Bus') {
+            // Bus is source - use target's X position
+            const targetX = tempTargetNode!.position.x + tempTargetNode!.size.width / 2;
+            connectionXPositions.push(targetX);
+          } else if (tempTargetNode?.type === 'Bus') {
+            // Bus is target - use source's X position
+            const sourceX = tempSourceNode!.position.x + tempSourceNode!.size.width / 2;
+            connectionXPositions.push(sourceX);
+          }
+        });
+        
+        if (connectionXPositions.length > 0) {
+          // Calculate required bus width
+          const minX = Math.min(...connectionXPositions);
+          const maxX = Math.max(...connectionXPositions);
+          const minBusWidth = 60; // Minimum bus width
+          const padding = 20; // Padding on each side of the bus
+          
+          const requiredWidth = Math.max(minBusWidth, maxX - minX + (padding * 2));
+          
+          // Update the bus node size in the actual nodeMap
+          const updatedBusNode = {
+            ...busNode,
+            size: { width: requiredWidth, height: busNode.size.height }
+          };
+          
+          nodeMap.set(busNode.id, updatedBusNode);
+        }
+      }
+    });
+  }
+
+  private positionNodesInLayersSimple(nodeMap: Map<string, DisplayNode>, layers: string[][]): void {
     layers.forEach((layer, layerIndex) => {
       const y = this.MARGIN + layerIndex * this.LAYER_SPACING;
       
@@ -241,35 +302,173 @@ export class VerticalHierarchyLayout implements LayoutEngine {
     });
   }
 
-  private adjustBusNodes(positionedConnections: DisplayConnection[], nodeMap: Map<string, DisplayNode>): void {
-    const busNodes = Array.from(nodeMap.values()).filter(node => node.type === 'Bus');
-
-    busNodes.forEach(busNode => {
-      // Find all connections for this bus
-      const connections = positionedConnections.filter(conn => conn.sourceId === busNode.id || conn.targetId === busNode.id);
+  private positionNodesInLayers(
+    nodeMap: Map<string, DisplayNode>, 
+    layers: string[][],
+    connections: DisplayConnection[]
+  ): void {
+    // Build parent-child relationships from connections
+    const parentToChildren = new Map<string, string[]>();
+    const childToParent = new Map<string, string>();
+    
+    // Build relationships from the connections
+    connections.forEach(conn => {
+      // Add child to parent's children list
+      const children = parentToChildren.get(conn.sourceId) || [];
+      children.push(conn.targetId);
+      parentToChildren.set(conn.sourceId, children);
       
-      if (connections.length > 0) {
-        // Calculate the required width based on connections
-        const minWidth = 60; // Minimum width for a bus
-        const connectionWidths = connections.map(conn => {
-          const sourceNode = nodeMap.get(conn.sourceId);
-          const targetNode = nodeMap.get(conn.targetId);
-          
-          if (sourceNode && targetNode) {
-            return Math.abs(sourceNode.position.x - targetNode.position.x) + Math.max(sourceNode.size.width, targetNode.size.width);
-          }
-          return 0;
-        });
+      // Set parent for child
+      childToParent.set(conn.targetId, conn.sourceId);
+    });
 
-        const requiredWidth = Math.max(minWidth, ...connectionWidths) * 3 / 5;
-
-        // Update the bus node size and position
-        busNode.size.width = requiredWidth;
-        busNode.position.x -= (requiredWidth - busNode.size.width) / 2; // Center the bus
+    layers.forEach((layer, layerIndex) => {
+      const y = this.MARGIN + layerIndex * this.LAYER_SPACING;
+      
+      // Separate nodes into those with parents in previous layers and those without
+      const nodesWithParents: string[] = [];
+      const nodesWithoutParents: string[] = [];
+      
+      layer.forEach(nodeId => {
+        const parentId = childToParent.get(nodeId);
+        const parentNode = parentId ? nodeMap.get(parentId) : null;
+        
+        // Check if parent is in a previous layer (already positioned)
+        if (parentNode && parentNode.position.x !== undefined) {
+          nodesWithParents.push(nodeId);
+        } else {
+          nodesWithoutParents.push(nodeId);
+        }
+      });
+      
+      // First, position nodes without parents using the original centering logic
+      if (nodesWithoutParents.length > 0) {
+        this.positionNodesWithoutParents(nodeMap, nodesWithoutParents, y);
+      }
+      
+      // Then, position nodes with parents to align with their parents
+      if (nodesWithParents.length > 0) {
+        this.positionChildrenWithParents(nodeMap, nodesWithParents, childToParent, y);
       }
     });
+  }
+
+  private positionNodesWithoutParents(
+    nodeMap: Map<string, DisplayNode>, 
+    nodeIds: string[], 
+    y: number
+  ): void {
+    if (nodeIds.length === 0) return;
+
+    // Calculate total width needed for nodes without parents
+    const totalNodeWidth = nodeIds.reduce((sum, nodeId) => {
+      const node = nodeMap.get(nodeId);
+      return sum + (node ? this._calculateNodeWidth(node) : 0);
+    }, 0);
     
-    // updated nodeMap
+    const totalSpacing = (nodeIds.length - 1) * this.NODE_SPACING;
+    const totalWidth = totalNodeWidth + totalSpacing;
+    
+    // Get all existing nodes in this layer to avoid overlaps
+    const existingNodes = Array.from(nodeMap.values()).filter(node => 
+      Math.abs(node.position.y - y) < 10 && !nodeIds.includes(node.id)
+    );
+    
+    // Calculate available space considering existing nodes
+    let startX = this.MARGIN;
+    
+    if (existingNodes.length > 0) {
+      // Find the rightmost existing node
+      const rightmostX = Math.max(...existingNodes.map(node => 
+        node.position.x + this._calculateNodeWidth(node)
+      ));
+      startX = rightmostX + this.NODE_SPACING;
+    } else {
+      // Center horizontally if no existing nodes
+      startX = this.MARGIN + Math.max(0, (800 - totalWidth) / 2);
+    }
+    
+    // Position nodes
+    let currentX = startX;
+    nodeIds.forEach(nodeId => {
+      const node = nodeMap.get(nodeId);
+      if (node) {
+        // Update the node in the shared map
+        nodeMap.set(nodeId, {
+          ...node,
+          position: { x: currentX, y }
+        });
+        currentX += this._calculateNodeWidth(node) + this.NODE_SPACING;
+      }
+    });
+  }
+
+  private positionChildrenWithParents(
+    nodeMap: Map<string, DisplayNode>,
+    nodesWithParents: string[],
+    childToParent: Map<string, string>,
+    y: number
+  ): void {
+    // Group children by their parent
+    const childrenByParent = new Map<string, string[]>();
+    
+    nodesWithParents.forEach(nodeId => {
+      const parentId = childToParent.get(nodeId);
+      if (parentId) {
+        const siblings = childrenByParent.get(parentId) || [];
+        siblings.push(nodeId);
+        childrenByParent.set(parentId, siblings);
+      }
+    });
+
+    // Position each group of siblings
+    childrenByParent.forEach((childrenIds, parentId) => {
+      const parentNode = nodeMap.get(parentId);
+      if (!parentNode) return;
+
+      if (childrenIds.length === 1) {
+        // Single child - center with parent
+        const childId = childrenIds[0];
+        const child = nodeMap.get(childId);
+        if (child) {
+          const parentCenterX = parentNode.position.x + parentNode.size.width / 2;
+          const childX = parentCenterX - this._calculateNodeWidth(child) / 2;
+          
+          nodeMap.set(childId, {
+            ...child,
+            position: { x: childX, y }
+          });
+        }
+      } else {
+        // Multiple children - distribute them across the parent's width with spacing
+        const children = childrenIds.map(id => nodeMap.get(id)).filter(Boolean) as DisplayNode[];
+        
+        // Calculate total width needed for all children
+        const totalChildrenWidth = children.reduce((sum, child) => sum + this._calculateNodeWidth(child), 0);
+        const totalSpacing = (children.length - 1) * this.NODE_SPACING;
+        const totalRequiredWidth = totalChildrenWidth + totalSpacing;
+        
+        // Calculate starting X position to center the group under the parent
+        const parentCenterX = parentNode.position.x + parentNode.size.width / 2;
+        let startX = parentCenterX - totalRequiredWidth / 2;
+        
+        // If the children extend beyond the parent's bounds, we need to handle this
+        // For now, let's ensure minimum spacing but keep them roughly centered
+        const minX = parentNode.position.x - totalRequiredWidth / 2;
+        startX = Math.max(startX, minX);
+        
+        // Position each child
+        let currentX = startX;
+        children.forEach((child, index) => {
+          const childId = childrenIds[index];
+          nodeMap.set(childId, {
+            ...child,
+            position: { x: currentX, y }
+          });
+          currentX += this._calculateNodeWidth(child) + this.NODE_SPACING;
+        });
+      }
+    });
   }
 
   private calculateConnectionPaths(
@@ -350,26 +549,24 @@ export class VerticalHierarchyLayout implements LayoutEngine {
           }
         });
   
-        // Calculate the required bus dimensions and position
-        const minX = Math.min(...connectionXPositions);
-        const maxX = Math.max(...connectionXPositions);
-        const minBusWidth = 60; // Minimum bus width
-        const padding = 20; // Padding on each side of the bus
-        
-        // Calculate new bus position and width
-        const requiredWidth = Math.max(minBusWidth, maxX - minX + (padding * 2));
-        const newBusX = minX - padding;
-        
-        // Update the bus node in the nodeMap
-        const updatedBusNode = {
-          ...busNode,
-          position: { x: newBusX, y: busNode.position.y },
-          size: { width: requiredWidth, height: busNode.size.height }
-        };
+        // Calculate the bus position based on connection points and pre-calculated width
+        if (connectionXPositions.length > 0) {
+          const minX = Math.min(...connectionXPositions);
+          const padding = 20;
+          
+          // Calculate new bus position (width was already set in precalculateBusSizes)
+          const newBusX = minX - padding;
+          
+          // Update the bus node position in the nodeMap
+          const updatedBusNode = {
+            ...busNode,
+            position: { x: newBusX, y: busNode.position.y }
+          };
 
-        nodeMap.set(busNodeId, updatedBusNode);
+          nodeMap.set(busNodeId, updatedBusNode);
+        }
   
-        // Now calculate connection paths with the updated bus dimensions
+        // Calculate connection paths with the positioned bus
         busConnections.forEach(conn => {
           const sourceNode = nodeMap.get(conn.sourceId);
           const targetNode = nodeMap.get(conn.targetId);
@@ -384,7 +581,7 @@ export class VerticalHierarchyLayout implements LayoutEngine {
           if (sourceNode.type === 'Bus') {
             // Bus is source - straight vertical line from bus to target
             const targetX = targetNode.position.x + targetNode.size.width / 2;
-            const busY = updatedBusNode.position.y + updatedBusNode.size.height;
+            const busY = sourceNode.position.y + sourceNode.size.height;
             const targetY = targetNode.position.y;
             
             points = [targetX, busY, targetX, targetY];
@@ -392,7 +589,7 @@ export class VerticalHierarchyLayout implements LayoutEngine {
             // Bus is target - straight vertical line from source to bus
             const sourceX = sourceNode.position.x + sourceNode.size.width / 2;
             const sourceY = sourceNode.position.y + sourceNode.size.height;
-            const busY = updatedBusNode.position.y;
+            const busY = targetNode.position.y;
             
             points = [sourceX, sourceY, sourceX, busY];
           } else {
@@ -479,5 +676,51 @@ export class VerticalHierarchyLayout implements LayoutEngine {
     });
 
     return processedConnections;
+  }
+
+  private debugLayout(nodes: DisplayNode[], connections: DisplayConnection[], layers: string[][]): void {
+    console.log('=== LAYOUT DEBUG ===');
+    console.log('Layers:', layers);
+    
+    layers.forEach((layer, index) => {
+      console.log(`\nLayer ${index}:`);
+      layer.forEach(nodeId => {
+        const node = nodes.find(n => n.id === nodeId);
+        if (node) {
+          console.log(`  ${node.id} (${node.type}): x=${node.position.x.toFixed(1)}, y=${node.position.y.toFixed(1)}, width=${node.size.width}, height=${node.size.height}`);
+        }
+      });
+    });
+
+    console.log('\nConnections:');
+    connections.forEach(conn => {
+      const sourceNode = nodes.find(n => n.id === conn.sourceId);
+      const targetNode = nodes.find(n => n.id === conn.targetId);
+      console.log(`  ${conn.sourceId} -> ${conn.targetId} (${sourceNode?.type} -> ${targetNode?.type})`);
+      if (conn.points.length > 0) {
+        console.log(`    Points: [${conn.points.join(', ')}]`);
+      }
+    });
+
+    // Check for overlaps
+    console.log('\nOverlap Detection:');
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const nodeA = nodes[i];
+        const nodeB = nodes[j];
+        
+        const overlapX = (nodeA.position.x < nodeB.position.x + nodeB.size.width) && 
+                        (nodeB.position.x < nodeA.position.x + nodeA.size.width);
+        const overlapY = (nodeA.position.y < nodeB.position.y + nodeB.size.height) && 
+                        (nodeB.position.y < nodeA.position.y + nodeA.size.height);
+        
+        if (overlapX && overlapY) {
+          console.log(`  OVERLAP: ${nodeA.id} and ${nodeB.id}`);
+          console.log(`    ${nodeA.id}: x=${nodeA.position.x}-${nodeA.position.x + nodeA.size.width}, y=${nodeA.position.y}-${nodeA.position.y + nodeA.size.height}`);
+          console.log(`    ${nodeB.id}: x=${nodeB.position.x}-${nodeB.position.x + nodeB.size.width}, y=${nodeB.position.y}-${nodeB.position.y + nodeB.size.height}`);
+        }
+      }
+    }
+    console.log('=== END DEBUG ===');
   }
 }

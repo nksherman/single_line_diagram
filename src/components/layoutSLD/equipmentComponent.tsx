@@ -4,7 +4,6 @@ import useImage from 'use-image';
 import { Group, Rect, Text, Image } from 'react-konva';
 
 import type { DisplayNode, TextElement } from './displayAdapter';
-import type EquipmentBase from '../../models/equipmentBase';
 import KonvaEquipInfo from './konvaEquipPopover';
 
 

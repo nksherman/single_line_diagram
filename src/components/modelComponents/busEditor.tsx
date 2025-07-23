@@ -13,7 +13,7 @@ import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 
 import EquipmentBase from '../../models/equipmentBase';
-import Bus, { type BusProperties } from '../../models/busEquipment';
+import Bus from '../../models/busEquipment';
 import { 
   validateVoltageCompatibility,
   validateConnectionLimits,

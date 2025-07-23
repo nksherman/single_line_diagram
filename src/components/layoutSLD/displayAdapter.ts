@@ -1,5 +1,4 @@
 import { EquipmentBase } from '../../models/equipmentBase';
-import type { EquipmentBaseData, EquipmentType } from '../../types/equipment.types';
 
 import Generator from '../../models/generatorEquipment';
 import Transformer from '../../models/transformerEquipment';

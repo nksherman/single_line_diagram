@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import type { ReactNode } from 'react';
 
 import Box from '@mui/material/Box';
 import Select from '@mui/material/Select';

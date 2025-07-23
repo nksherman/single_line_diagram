@@ -8,6 +8,8 @@ export interface EquipmentBaseData {
   type: string;
   sourceIds?: string[];
   loadIds?: string[];
+  position?: { x: number; y: number }; // For layout purposes
+  metadata?: Record<string, any>;
 }
 
 export interface ConnectionData {

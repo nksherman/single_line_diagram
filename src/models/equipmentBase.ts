@@ -39,6 +39,9 @@ export class EquipmentBase {
 
   public allowedSources: number = EquipmentBase.allowedSources;
   public allowedLoads: number = EquipmentBase.allowedLoads;
+
+  // initialize position for layout purposes
+  private _position: { x: number; y: number } = { x: 0, y: 0 };
   
   constructor(id: string, name: string, type: EquipmentType) {
     if (EquipmentBase.registry.has(id)) {
@@ -53,6 +56,14 @@ export class EquipmentBase {
   }
 
   static inputProperties: InputPropertiesDefinition = {}
+
+  get position(): { x: number; y: number } {
+    return { ...this._position };
+  }
+
+  set position(pos: { x: number; y: number }) {
+    this._position = { ...pos };
+  }
 
   addSource(source: EquipmentBase): void {
     this._sources.add(source);
@@ -188,12 +199,15 @@ export class EquipmentBase {
       name: this.name,
       type: this.type,
       sourceIds: this.sourceIds,
-      loadIds: this.loadIds
+      loadIds: this.loadIds,
+      position: this.position
     };
   }
 
   static fromJSON(data: EquipmentBaseData): EquipmentBase {
-    return new EquipmentBase(data.id, data.name, data.type as EquipmentType);
+    const equipment = new EquipmentBase(data.id, data.name, data.type as EquipmentType);
+    equipment.position = data?.position || { x: 0, y: 0 };
+    return equipment;
   }
   
   static rebuildConnections(equipmentData: Array<EquipmentBaseData>): void {

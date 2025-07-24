@@ -12,13 +12,13 @@ import OutlinedInput from '@mui/material/OutlinedInput';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 
-import EquipmentBase from '../../../models/equipmentBase';
-import Transformer, { type TransformerProperties } from '../../../models/transformerEquipment';
+import EquipmentBase from '../../models/equipmentBase';
+import Transformer, { type TransformerProperties } from '../../models/transformerEquipment';
 import { 
   validateVoltageCompatibility,
   validateConnectionLimits,
   validateConnectionConflicts
-} from '../../../utils/equipmentUtils';
+} from '../../utils/equipmentUtils';
 
 interface TransformerEditorProps {
   transformer: Transformer;

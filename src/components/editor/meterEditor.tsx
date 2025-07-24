@@ -12,13 +12,13 @@ import OutlinedInput from '@mui/material/OutlinedInput';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 
-import EquipmentBase from '../../../models/equipmentBase';
-import Meter, { type MeterProperties } from '../../../models/meterEquipment';
+import EquipmentBase from '../../models/equipmentBase';
+import Meter, { type MeterProperties } from '../../models/meterEquipment';
 import { 
   validateVoltageCompatibility,
   validateConnectionLimits,
   validateConnectionConflicts
-} from '../../../utils/equipmentUtils';
+} from '../../utils/equipmentUtils';
 
 interface MeterEditorProps {
   meter: Meter;

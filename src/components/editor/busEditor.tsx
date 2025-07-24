@@ -12,13 +12,13 @@ import OutlinedInput from '@mui/material/OutlinedInput';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 
-import EquipmentBase from '../../../models/equipmentBase';
-import Bus from '../../../models/busEquipment';
+import EquipmentBase from '../../models/equipmentBase';
+import Bus from '../../models/busEquipment';
 import { 
   validateVoltageCompatibility,
   validateConnectionLimits,
   validateConnectionConflicts
-} from '../../../utils/equipmentUtils';
+} from '../../utils/equipmentUtils';
 
 interface BusEditorProps {
   bus: Bus;

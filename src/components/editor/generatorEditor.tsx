@@ -12,13 +12,13 @@ import OutlinedInput from '@mui/material/OutlinedInput';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 
-import EquipmentBase from '../../../models/equipmentBase';
-import Generator, { type GeneratorProperties } from '../../../models/generatorEquipment';
+import EquipmentBase from '../../models/equipmentBase';
+import Generator, { type GeneratorProperties } from '../../models/generatorEquipment';
 import { 
   validateVoltageCompatibility,
   validateConnectionLimits,
   validateConnectionConflicts
-} from '../../../utils/equipmentUtils';
+} from '../../utils/equipmentUtils';
 
 interface GeneratorEditorProps {
   generator: Generator;

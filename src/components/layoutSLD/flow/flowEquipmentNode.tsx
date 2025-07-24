@@ -18,8 +18,10 @@ interface ReactFlowEquipmentNodeProps {
 interface TextGroup {
   left: string[];
   right: string[];
-  top?: string;
-  bottom?: string;
+  topLeft?: string; // Optional for top-left text
+  topRight?: string; // Optional for top-right text
+  bottomLeft?: string; // Optional for bottom-left text
+  bottomRight?: string; // Optional for bottom-right text
 }
 
 const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data }) => {
@@ -53,7 +55,7 @@ const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data })
     const textGroup: TextGroup = {
       left: [],
       right: [],
-      top: equipment.name
+      topLeft: equipment.name
     };
 
     // Type-specific text elements
@@ -62,7 +64,7 @@ const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data })
       textGroup.right = [
         `${gen.capacity}MW`,
       ];
-      textGroup.bottom = `${gen.voltage}kV`;
+      textGroup.bottomRight = `${gen.voltage}kV`;
 
     } else if (equipment instanceof Transformer) {
       const trans = equipment as Transformer;
@@ -75,7 +77,7 @@ const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data })
       ];
     } else if (equipment instanceof Bus) {
       const bus = equipment as Bus;
-      textGroup.right = [`${bus.voltage}kV`];
+      textGroup.topRight = `${bus.voltage}kV`;
     } else if (equipment instanceof Meter) {
       const meter = equipment as Meter;
       textGroup.right = [
@@ -98,11 +100,12 @@ const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data })
       return Math.max(maxLength * 10); // Rough character width estimation
     };
 
+    
     const leftWidth = estimateTextWidth(textGroups.left);
     const rightWidth = estimateTextWidth(textGroups.right);
     const topBottomWidth = Math.max(
-      estimateTextWidth(textGroups.top ? [textGroups.top] : []),
-      estimateTextWidth(textGroups.bottom ? [textGroups.bottom] : [])
+      estimateTextWidth(textGroups.topLeft ? [textGroups.topLeft] : []) +  estimateTextWidth(textGroups.topRight ? [textGroups.topRight] : []),
+      estimateTextWidth(textGroups.bottomLeft ? [textGroups.bottomLeft] : []) + estimateTextWidth(textGroups.bottomRight ? [textGroups.bottomRight] : [])
     );
 
     return Math.max(
@@ -202,14 +205,18 @@ const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data })
       )}
       
       {/* Top text */}
-      {textGroups.top && (
+      <Box>
+        {/* Top left Text */}
+        {textGroups.topLeft && (
         <Typography
           variant="body2"
           sx={{
             position: 'absolute',
             top: -20,
-            left: '50%',
-            transform: 'translateX(-50%)',
+            // left: '50%',
+            // transform: 'translateX(-50%)',
+            left: 0,
+            transform: 'translateX(0)',
             fontSize: 12,
             fontWeight: 'bold',
             whiteSpace: 'nowrap',
@@ -217,9 +224,31 @@ const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data })
             zIndex: 10,
           }}
         >
-          {textGroups.top}
+          {textGroups.topLeft}
         </Typography>
       )}
+        {textGroups.topRight && (
+        <Typography
+          variant="body2"
+          sx={{
+            position: 'absolute',
+            top: -20,
+            // left: '50%',
+            // transform: 'translateX(-50%)',
+            right: 0,
+            transform: 'translateX(0)',
+            fontSize: 12,
+            fontWeight: 'bold',
+            whiteSpace: 'nowrap',
+            pointerEvents: 'none',
+            zIndex: 10,
+          }}
+        >
+          {textGroups.topRight}
+        </Typography>
+      )}
+      </Box>
+      
 
       {/* Main content container */}
       <Box
@@ -318,24 +347,49 @@ const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data })
       </Box>
 
       {/* Bottom text */}
-      {textGroups.bottom && (
+      <Box>
+        {/* Bottom left Text */}
+        {textGroups.bottomLeft && (
         <Typography
           variant="body2"
           sx={{
             position: 'absolute',
-            bottom: -20,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            fontSize: 10,
+            top: -20,
+            // left: '50%',
+            // transform: 'translateX(-50%)',
+            left: 0,
+            transform: 'translateX(0)',
+            fontSize: 12,
+            fontWeight: 'bold',
             whiteSpace: 'nowrap',
             pointerEvents: 'none',
             zIndex: 10,
           }}
         >
-          {textGroups.bottom}
+          {textGroups.bottomLeft}
         </Typography>
       )}
-      
+        {textGroups.bottomRight && (
+        <Typography
+          variant="body2"
+          sx={{
+            position: 'absolute',
+            bottom: -20,
+            // left: '50%',
+            // transform: 'translateX(-50%)',
+            right: 0,
+            transform: 'translateX(0)',
+            fontSize: 12,
+            fontWeight: 'bold',
+            whiteSpace: 'nowrap',
+            pointerEvents: 'none',
+            zIndex: 10,
+          }}
+        >
+          {textGroups.bottomRight}
+        </Typography>
+      )}
+      </Box>
       {/* Bottom handle for connections to loads */}
       {equipment instanceof Bus ? (
         <>

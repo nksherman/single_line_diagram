@@ -44,23 +44,12 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
   const generateInitialLayout = useCallback((equipment: EquipmentBase[]) => {
     if (equipment.length === 0) return { nodes: [], edges: [] };
 
-
-
-    console.log('=== DEBUGGING LAYOUT GENERATION ===');
-    console.log('Equipment list:', equipment.map(eq => ({
-      id: eq.id,
-      name: eq.name,
-      type: eq.type,
-      loads: Array.from(eq.loads).map(load => ({ id: load.id, name: load.name }))
-    })));
-
-
-
     // Convert EquipmentBase to LayoutNode
     const layoutNodes: LayoutNode[] = equipment.map(eq => ({
       id: eq.id,
       type: eq.type as string,
       loads: Array.from(eq.loads).map(load => ({ id: load.id })),
+      sources: Array.from(eq.sources).map(source => ({ id: source.id })),
       position: eq.position,
     }));
 
@@ -82,9 +71,6 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
         nodeSpacing,
         margin,
     });
-
-
-    console.log('Layout result:', layout);
 
     // Convert back to ReactFlow nodes and edges
     const nodes: Node[] = layout.nodes.map(layoutNode => {
@@ -114,58 +100,6 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
       type: 'step',
       style: { strokeWidth: 2, stroke: '#666' },
     }));
-
-    // Debug logging for edges and connections
-    console.log('=== EDGE CONNECTIONS DEBUG ===');
-    edges.forEach(edge => {
-      const sourceEquipment = EquipmentBase.getById(edge.source);
-      const targetEquipment = EquipmentBase.getById(edge.target);
-      
-      console.log(`Edge: ${edge.id}`);
-      console.log(`  Source: ${sourceEquipment?.name || 'Unknown'} (${edge.source}) - Handle: ${edge.sourceHandle}`);
-      console.log(`  Target: ${targetEquipment?.name || 'Unknown'} (${edge.target}) - Handle: ${edge.targetHandle}`);
-      console.log(`  Connection: ${sourceEquipment?.name || edge.source} -> ${targetEquipment?.name || edge.target}`);
-      console.log('---');
-    });
-
-    // Debug logging for nodes and their handles
-    console.log('=== NODE HANDLES DEBUG ===');
-    nodes.forEach(node => {
-      const equipment = EquipmentBase.getById(node.id);
-      console.log(`Node: ${equipment.name} (${equipment.id}) - Type: ${equipment.type}`);
-      
-      if (equipment.type === 'Bus') {
-        console.log(`  Sources: ${Array.from(equipment.sources || []).map(s => s.name).join(', ')}`);
-        console.log(`  Loads: ${Array.from(equipment.loads || []).map(l => l.name).join(', ')}`);
-        console.log(`  Expected top handles: ${equipment.sources?.size || 0}`);
-        console.log(`  Expected bottom handles: ${equipment.loads?.size || 0}`);
-      } else {
-        console.log(`  Loads: ${Array.from(equipment.loads || []).map(l => l.name).join(', ')}`);
-      }
-      console.log('---');
-    });
-
-    // Summary of connections
-    console.log('=== CONNECTION SUMMARY ===');
-    const connectionMap = new Map<string, string[]>();
-    edges.forEach(edge => {
-      const sourceEquipment = EquipmentBase.getById(edge.source);
-      const targetEquipment = EquipmentBase.getById(edge.target);
-      const sourceName = sourceEquipment?.name || edge.source;
-      const targetName = targetEquipment?.name || edge.target;
-      
-      if (!connectionMap.has(sourceName)) {
-        connectionMap.set(sourceName, []);
-      }
-      connectionMap.get(sourceName)!.push(`${targetName} (${edge.sourceHandle} -> ${edge.targetHandle})`);
-    });
-
-    connectionMap.forEach((targets, source) => {
-      console.log(`${source} connects to:`);
-      targets.forEach(target => console.log(`  -> ${target}`));
-    });
-
-    console.log('=== END DEBUG ===');
 
     return { nodes, edges };
 

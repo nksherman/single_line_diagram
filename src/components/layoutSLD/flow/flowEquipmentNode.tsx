@@ -135,16 +135,15 @@ const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data })
   };
 
   // Generate handles for bus equipment
-  const generateBusHandles = (equipment: EquipmentBase, source: boolean, side: 'left' | 'right' | 'top' | 'bottom') => {
+  const generateBusHandles = (equipment: EquipmentBase, sourceSide: boolean, side: 'left' | 'right' | 'top' | 'bottom') => {
     if (!(equipment instanceof Bus)) return null;
     const bus = equipment as Bus;
 
     const pos = side === 'top' ? Position.Top : side === 'bottom' ? Position.Bottom : side === 'left' ? Position.Left : Position.Right;
 
     let handlesCount = 0;
-    if (source) {;
+    if (sourceSide) {
       handlesCount = bus.sources?.size || 1;
-      
     } else {
       handlesCount = bus.loads?.size || 1;
     }
@@ -153,8 +152,8 @@ const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data })
     for (let i = 0; i < handlesCount; i++) {
       handles.push(
         <Handle
-          key={`${side}-${i}`}
-          type="target"
+           key={`${side}-${i}`}
+          type={sourceSide ? 'target' : 'source'}
           position={pos}
           id={`${side}-${i}`}
           style={{ 

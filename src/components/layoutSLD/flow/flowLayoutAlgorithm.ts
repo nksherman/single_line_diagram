@@ -2,6 +2,7 @@ export interface LayoutNode {
   id: string;
   type: string;
   loads: { id: string }[];
+  sources: { id: string }[];
   position?: { x: number; y: number };
 }
 
@@ -189,6 +190,19 @@ export function generateEdgesFromItems(items: LayoutNode[]): Array<{
     targetHandle?: string;
   }> = [];
   
+  // Create a map to track source connections for each target node
+  const targetSourceMap = new Map<string, string[]>();
+  
+  // First pass: build the map of all connections
+  items.forEach(item => {
+    item.loads.forEach(load => {
+      if (!targetSourceMap.has(load.id)) {
+        targetSourceMap.set(load.id, []);
+      }
+      targetSourceMap.get(load.id)!.push(item.id);
+    });
+  });
+  
   items.forEach(item => {
     item.loads.forEach((load, loadIndex) => {
       // Determine source handle based on equipment type
@@ -201,8 +215,9 @@ export function generateEdgesFromItems(items: LayoutNode[]): Array<{
       let targetHandle = 'top';
       const targetItem = items.find(i => i.id === load.id);
       if (targetItem?.type === 'Bus') {
-        // Find the index of this source connection in the target bus
-        const sourceIndex = Array.from(targetItem.loads).findIndex(l => l.id === item.id);
+        // Find the index of this source connection in the target bus's sources
+        const targetSources = targetSourceMap.get(load.id) || [];
+        const sourceIndex = targetSources.indexOf(item.id);
         if (sourceIndex >= 0) {
           targetHandle = `top-${sourceIndex}`;
         }

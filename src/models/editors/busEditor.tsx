@@ -12,31 +12,27 @@ import OutlinedInput from '@mui/material/OutlinedInput';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 
-import EquipmentBase from '../../models/equipmentBase';
-import Transformer, { type TransformerProperties } from '../../models/transformerEquipment';
+import EquipmentBase from '../equipmentBase';
+import Bus from '../busEquipment';
 import { 
   validateVoltageCompatibility,
   validateConnectionLimits,
   validateConnectionConflicts
 } from '../../utils/equipmentUtils';
 
-interface TransformerEditorProps {
-  transformer: Transformer;
+interface BusEditorProps {
+  bus: Bus;
   equipmentList: EquipmentBase[];
   setEquipmentList: (eq: EquipmentBase[]) => void;
   onSave?: () => void;
 }
 
-function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSave }: TransformerEditorProps) {
+function BusEditor({ bus, equipmentList, setEquipmentList, onSave }: BusEditorProps) {
   // Form state
-  const [name, setName] = useState(transformer.name);
-  const [primaryVoltage, setPrimaryVoltage] = useState(transformer.primaryVoltage);
-  const [secondaryVoltage, setSecondaryVoltage] = useState(transformer.secondaryVoltage);
-  const [powerRating, setPowerRating] = useState(transformer.powerRating);
-  const [phaseCount, setPhaseCount] = useState(transformer.phaseCount);
-  const [connectionType, setConnectionType] = useState(transformer.connectionType);
-  const [impedance, setImpedance] = useState(transformer.impedance);
-  const [isOperational, setIsOperational] = useState(transformer.isOperational);
+  const [name, setName] = useState(bus.name);
+  const [voltage, setVoltage] = useState(bus.voltage);
+  const [allowedSources, setAllowedSources] = useState(bus.allowedSources);
+  const [allowedLoads, setAllowedLoads] = useState(bus.allowedLoads);
   
   // Connection state
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
@@ -47,12 +43,12 @@ function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSav
 
   // Initialize connections
   useEffect(() => {
-    setSelectedSources(Array.from(transformer.sources).map(eq => eq.id));
-    setSelectedLoads(Array.from(transformer.loads).map(eq => eq.id));
-  }, [transformer]);
+    setSelectedSources(Array.from(bus.sources).map(eq => eq.id));
+    setSelectedLoads(Array.from(bus.loads).map(eq => eq.id));
+  }, [bus]);
 
-  // Get available equipment for connections (excluding current transformer)
-  const availableEquipment = equipmentList.filter(eq => eq.id !== transformer.id);
+  // Get available equipment for connections (excluding current bus)
+  const availableEquipment = equipmentList.filter(eq => eq.id !== bus.id);
 
   // Function to validate voltage compatibility using utility
   const validateVoltageCompatibilityLocal = (): string[] => {
@@ -60,7 +56,7 @@ function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSav
       selectedSources,
       selectedLoads,
       equipmentList,
-      (connectionType: "source" | "load") => connectionType === "source" ? primaryVoltage : secondaryVoltage, // Use primary voltage for sources, secondary for loads
+      () => voltage, // Bus voltage is the same for both source and load connections
       name
     );
   };
@@ -70,29 +66,21 @@ function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSav
     const errors: string[] = [];
     
     if (!name.trim()) {
-      errors.push('Transformer name is required');
+      errors.push('Bus name is required');
     }
 
-    Object.entries(Transformer.inputProperties).forEach(([key, prop]) => {
+    // Use Bus's static validation
+    Object.entries(Bus.inputProperties).forEach(([key, prop]) => {
       let value;
       switch (key) {
-        case 'primaryVoltage':
-          value = primaryVoltage;
+        case 'voltage':
+          value = voltage;
           break;
-        case 'secondaryVoltage':
-          value = secondaryVoltage;
+        case 'allowedSources':
+          value = allowedSources;
           break;
-        case 'powerRating':
-          value = powerRating;
-          break;
-        case 'phaseCount':
-          value = phaseCount;
-          break;
-        case 'connectionType':
-          value = connectionType;
-          break;
-        case 'impedance':
-          value = impedance;
+        case 'allowedLoads':
+          value = allowedLoads;
           break;
         default:
           return;
@@ -110,13 +98,13 @@ function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSav
     const voltageErrors = validateVoltageCompatibilityLocal();
     errors.push(...voltageErrors);
 
-    // Validate connection limits
+    // Validate connection limits with current allowedSources/allowedLoads values
     const connectionLimitErrors = validateConnectionLimits(
       selectedSources, 
       selectedLoads, 
-      Transformer.allowedSources, 
-      Transformer.allowedLoads, 
-      'Transformer'
+      allowedSources, 
+      allowedLoads, 
+      'Bus'
     );
     errors.push(...connectionLimitErrors);
 
@@ -128,19 +116,42 @@ function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSav
     const valueArray = typeof values === 'string' ? values.split(',') : values;
     
     if (isSource) {
-      const limitErrors = validateConnectionLimits(valueArray, selectedLoads, Transformer.allowedSources, Transformer.allowedLoads, 'Transformer');
+      const limitErrors = validateConnectionLimits(valueArray, selectedLoads, allowedSources, allowedLoads, 'Bus');
       if (limitErrors.length > 0) {
         setValidationErrors(limitErrors);
         return;
       }
       setSelectedSources(valueArray);
     } else {
-      const limitErrors = validateConnectionLimits(selectedSources, valueArray, Transformer.allowedSources, Transformer.allowedLoads, 'Transformer');
+      const limitErrors = validateConnectionLimits(selectedSources, valueArray, allowedSources, allowedLoads, 'Bus');
       if (limitErrors.length > 0) {
         setValidationErrors(limitErrors);
         return;
       }
       setSelectedLoads(valueArray);
+    }
+  };
+
+  // Handle changes to allowedSources/allowedLoads and validate existing connections
+  const handleAllowedConnectionsChange = (value: number, isSource: boolean) => {
+    if (isSource) {
+      setAllowedSources(value);
+      // If reducing allowed sources, validate current selections
+      if (value < selectedSources.length) {
+        setValidationErrors([`Current source selections (${selectedSources.length}) exceed new limit (${value}). Please reduce selections.`]);
+      } else {
+        // Clear previous validation errors
+        setValidationErrors([]);
+      }
+    } else {
+      setAllowedLoads(value);
+      // If reducing allowed loads, validate current selections
+      if (value < selectedLoads.length) {
+        setValidationErrors([`Current load selections (${selectedLoads.length}) exceed new limit (${value}). Please reduce selections.`]);
+      } else {
+        // Clear previous validation errors
+        setValidationErrors([]);
+      }
     }
   };
 
@@ -159,41 +170,37 @@ function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSav
       const loadEquipment = equipmentList.filter(eq => selectedLoads.includes(eq.id));
 
       // Use utility function to validate connection conflicts
-      const connectionErrors = validateConnectionConflicts(sourceEquipment, loadEquipment, transformer.id);
+      const connectionErrors = validateConnectionConflicts(sourceEquipment, loadEquipment, bus.id);
       if (connectionErrors.length > 0) {
         throw new Error(connectionErrors.join(', '));
       }
 
-      // Update transformer properties
-      transformer.name = name;
-      transformer.primaryVoltage = primaryVoltage;
-      transformer.secondaryVoltage = secondaryVoltage;
-      transformer.powerRating = powerRating;
-      transformer.phaseCount = phaseCount;
-      transformer.connectionType = connectionType;
-      transformer.impedance = impedance;
-      transformer.isOperational = isOperational;
+      // Update bus properties
+      bus.name = name;
+      bus.voltage = voltage;
+      bus.allowedSources = allowedSources;
+      bus.allowedLoads = allowedLoads;
 
       // Clear existing connections
-      Array.from(transformer.sources).forEach(source => {
-        transformer.removeSource(source);
+      Array.from(bus.sources).forEach(source => {
+        bus.removeSource(source);
       });
-      Array.from(transformer.loads).forEach(load => {
-        transformer.removeLoad(load);
+      Array.from(bus.loads).forEach(load => {
+        bus.removeLoad(load);
       });
 
       // Add new connections
       selectedSources.forEach(sourceId => {
         const source = equipmentList.find(eq => eq.id === sourceId);
         if (source) {
-          transformer.addSource(source);
+          bus.addSource(source);
         }
       });
 
       selectedLoads.forEach(loadId => {
         const load = equipmentList.find(eq => eq.id === loadId);
         if (load) {
-          transformer.addLoad(load);
+          bus.addLoad(load);
         }
       });
 
@@ -211,117 +218,63 @@ function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSav
     }
   };
 
-  const connectionTypeOptions = ['Delta', 'Wye'];
-  const phaseCountOptions = [1, 3];
-
   return (
     <Box sx={{ p: 2, maxWidth: 600 }}>
       <Typography variant="h6" gutterBottom>
-        Edit Transformer: {transformer.name}
+        Edit Bus: {bus.name}
       </Typography>
 
       {/* Name */}
       <TextField
         fullWidth
         margin="dense"
-        label="Transformer Name"
+        label="Bus Name"
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
 
-      {/* Primary Voltage */}
+      {/* Voltage - Locked */}
       <TextField
         fullWidth
         margin="dense"
-        label="Primary Voltage (kV)"
+        label="Voltage (kV)"
         type="number"
-        value={primaryVoltage}
-        onChange={(e) => setPrimaryVoltage(Number(e.target.value))}
+        value={voltage}
+        disabled={true}
+        helperText="Voltage is locked - change at the source equipment level"
+        onChange={(e) => setVoltage(Number(e.target.value))}
       />
 
-      {/* Secondary Voltage */}
+      {/* Allowed Sources */}
       <TextField
         fullWidth
         margin="dense"
-        label="Secondary Voltage (kV)"
+        label="Maximum Source Connections"
         type="number"
-        value={secondaryVoltage}
-        onChange={(e) => setSecondaryVoltage(Number(e.target.value))}
+        value={allowedSources}
+        onChange={(e) => handleAllowedConnectionsChange(Number(e.target.value), true)}
+        helperText={`Currently connected sources: ${selectedSources.length}`}
       />
 
-      {/* Power Rating */}
+      {/* Allowed Loads */}
       <TextField
         fullWidth
         margin="dense"
-        label="Power Rating (MVA)"
+        label="Maximum Load Connections"
         type="number"
-        value={powerRating}
-        onChange={(e) => setPowerRating(Number(e.target.value))}
+        value={allowedLoads}
+        onChange={(e) => handleAllowedConnectionsChange(Number(e.target.value), false)}
+        helperText={`Currently connected loads: ${selectedLoads.length}`}
       />
-
-      {/* Phase Count */}
-      <FormControl fullWidth margin="dense">
-        <InputLabel>Phase Count</InputLabel>
-        <Select
-          value={phaseCount}
-          label="Phase Count"
-          onChange={(e) => setPhaseCount(Number(e.target.value) as 1 | 3)}
-        >
-          {phaseCountOptions.map((phase) => (
-            <MenuItem key={phase} value={phase}>
-              {phase} Phase
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-
-      {/* Connection Type */}
-      <FormControl fullWidth margin="dense">
-        <InputLabel>Connection Type</InputLabel>
-        <Select
-          value={connectionType}
-          label="Connection Type"
-          onChange={(e) => setConnectionType(e.target.value as TransformerProperties['connectionType'])}
-        >
-          {connectionTypeOptions.map((type) => (
-            <MenuItem key={type} value={type}>
-              {type}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-
-      {/* Impedance */}
-      <TextField
-        fullWidth
-        margin="dense"
-        label="Impedance (%)"
-        type="number"
-        value={impedance}
-        onChange={(e) => setImpedance(Number(e.target.value))}
-      />
-
-      {/* Operational Status */}
-      <FormControl fullWidth margin="dense">
-        <InputLabel>Status</InputLabel>
-        <Select
-          value={isOperational}
-          label="Status"
-          onChange={(e) => setIsOperational(e.target.value === 'true')}
-        >
-          <MenuItem value="true">Operational</MenuItem>
-          <MenuItem value="false">Not Operational</MenuItem>
-        </Select>
-      </FormControl>
 
       {/* Sources */}
       <FormControl fullWidth margin="dense">
-        <InputLabel>Sources (Required)</InputLabel>
+        <InputLabel>Sources (Optional)</InputLabel>
         <Select
           multiple
           value={selectedSources}
           onChange={(e) => handleConnectionChange(e.target.value, true)}
-          input={<OutlinedInput label="Sources (Required)" />}
+          input={<OutlinedInput label="Sources (Optional)" />}
           renderValue={(selected) => (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
               {selected.map((value) => {
@@ -343,12 +296,12 @@ function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSav
 
       {/* Loads */}
       <FormControl fullWidth margin="dense">
-        <InputLabel>Loads (Required)</InputLabel>
+        <InputLabel>Loads (Optional)</InputLabel>
         <Select
           multiple
           value={selectedLoads}
           onChange={(e) => handleConnectionChange(e.target.value, false)}
-          input={<OutlinedInput label="Loads (Required)" />}
+          input={<OutlinedInput label="Loads (Optional)" />}
           renderValue={(selected) => (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
               {selected.map((value) => {
@@ -392,4 +345,4 @@ function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSav
   );
 }
 
-export default TransformerEditor;
+export default BusEditor;

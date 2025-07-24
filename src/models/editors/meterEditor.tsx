@@ -12,8 +12,8 @@ import OutlinedInput from '@mui/material/OutlinedInput';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 
-import EquipmentBase from '../../models/equipmentBase';
-import Meter, { type MeterProperties } from '../../models/meterEquipment';
+import EquipmentBase from '../equipmentBase';
+import Meter, { type MeterProperties } from '../meterEquipment';
 import { 
   validateVoltageCompatibility,
   validateConnectionLimits,

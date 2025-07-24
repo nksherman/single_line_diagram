@@ -12,29 +12,31 @@ import OutlinedInput from '@mui/material/OutlinedInput';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 
-import EquipmentBase from '../../models/equipmentBase';
-import Generator, { type GeneratorProperties } from '../../models/generatorEquipment';
+import EquipmentBase from '../equipmentBase';
+import Transformer, { type TransformerProperties } from '../transformerEquipment';
 import { 
   validateVoltageCompatibility,
   validateConnectionLimits,
   validateConnectionConflicts
 } from '../../utils/equipmentUtils';
 
-interface GeneratorEditorProps {
-  generator: Generator;
+interface TransformerEditorProps {
+  transformer: Transformer;
   equipmentList: EquipmentBase[];
   setEquipmentList: (eq: EquipmentBase[]) => void;
   onSave?: () => void;
 }
 
-function GeneratorEditor({ generator, equipmentList, setEquipmentList, onSave }: GeneratorEditorProps) {
+function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSave }: TransformerEditorProps) {
   // Form state
-  const [name, setName] = useState(generator.name);
-  const [capacity, setCapacity] = useState(generator.capacity);
-  const [voltage, setVoltage] = useState(generator.voltage);
-  const [fuelType, setFuelType] = useState(generator.fuelType);
-  const [efficiency, setEfficiency] = useState(generator.efficiency);
-  const [isOnline, setIsOnline] = useState(generator.isOnline);
+  const [name, setName] = useState(transformer.name);
+  const [primaryVoltage, setPrimaryVoltage] = useState(transformer.primaryVoltage);
+  const [secondaryVoltage, setSecondaryVoltage] = useState(transformer.secondaryVoltage);
+  const [powerRating, setPowerRating] = useState(transformer.powerRating);
+  const [phaseCount, setPhaseCount] = useState(transformer.phaseCount);
+  const [connectionType, setConnectionType] = useState(transformer.connectionType);
+  const [impedance, setImpedance] = useState(transformer.impedance);
+  const [isOperational, setIsOperational] = useState(transformer.isOperational);
   
   // Connection state
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
@@ -45,12 +47,12 @@ function GeneratorEditor({ generator, equipmentList, setEquipmentList, onSave }:
 
   // Initialize connections
   useEffect(() => {
-    setSelectedSources(Array.from(generator.sources).map(eq => eq.id));
-    setSelectedLoads(Array.from(generator.loads).map(eq => eq.id));
-  }, [generator]);
+    setSelectedSources(Array.from(transformer.sources).map(eq => eq.id));
+    setSelectedLoads(Array.from(transformer.loads).map(eq => eq.id));
+  }, [transformer]);
 
-  // Get available equipment for connections (excluding current generator)
-  const availableEquipment = equipmentList.filter(eq => eq.id !== generator.id);
+  // Get available equipment for connections (excluding current transformer)
+  const availableEquipment = equipmentList.filter(eq => eq.id !== transformer.id);
 
   // Function to validate voltage compatibility using utility
   const validateVoltageCompatibilityLocal = (): string[] => {
@@ -58,7 +60,7 @@ function GeneratorEditor({ generator, equipmentList, setEquipmentList, onSave }:
       selectedSources,
       selectedLoads,
       equipmentList,
-      () => voltage, // Generator voltage is the same for both source and load connections
+      (connectionType: "source" | "load") => connectionType === "source" ? primaryVoltage : secondaryVoltage, // Use primary voltage for sources, secondary for loads
       name
     );
   };
@@ -68,23 +70,29 @@ function GeneratorEditor({ generator, equipmentList, setEquipmentList, onSave }:
     const errors: string[] = [];
     
     if (!name.trim()) {
-      errors.push('Generator name is required');
+      errors.push('Transformer name is required');
     }
 
-    Object.entries(Generator.inputProperties).forEach(([key, prop]) => {
+    Object.entries(Transformer.inputProperties).forEach(([key, prop]) => {
       let value;
       switch (key) {
-        case 'capacity':
-          value = capacity;
+        case 'primaryVoltage':
+          value = primaryVoltage;
           break;
-        case 'voltage':
-          value = voltage;
+        case 'secondaryVoltage':
+          value = secondaryVoltage;
           break;
-        case 'fuelType':
-          value = fuelType;
+        case 'powerRating':
+          value = powerRating;
           break;
-        case 'efficiency':
-          value = efficiency;
+        case 'phaseCount':
+          value = phaseCount;
+          break;
+        case 'connectionType':
+          value = connectionType;
+          break;
+        case 'impedance':
+          value = impedance;
           break;
         default:
           return;
@@ -106,9 +114,9 @@ function GeneratorEditor({ generator, equipmentList, setEquipmentList, onSave }:
     const connectionLimitErrors = validateConnectionLimits(
       selectedSources, 
       selectedLoads, 
-      Generator.allowedSources, 
-      Generator.allowedLoads, 
-      'Generator'
+      Transformer.allowedSources, 
+      Transformer.allowedLoads, 
+      'Transformer'
     );
     errors.push(...connectionLimitErrors);
 
@@ -120,14 +128,14 @@ function GeneratorEditor({ generator, equipmentList, setEquipmentList, onSave }:
     const valueArray = typeof values === 'string' ? values.split(',') : values;
     
     if (isSource) {
-      const limitErrors = validateConnectionLimits(valueArray, selectedLoads, Generator.allowedSources, Generator.allowedLoads, 'Generator');
+      const limitErrors = validateConnectionLimits(valueArray, selectedLoads, Transformer.allowedSources, Transformer.allowedLoads, 'Transformer');
       if (limitErrors.length > 0) {
         setValidationErrors(limitErrors);
         return;
       }
       setSelectedSources(valueArray);
     } else {
-      const limitErrors = validateConnectionLimits(selectedSources, valueArray, Generator.allowedSources, Generator.allowedLoads, 'Generator');
+      const limitErrors = validateConnectionLimits(selectedSources, valueArray, Transformer.allowedSources, Transformer.allowedLoads, 'Transformer');
       if (limitErrors.length > 0) {
         setValidationErrors(limitErrors);
         return;
@@ -151,39 +159,41 @@ function GeneratorEditor({ generator, equipmentList, setEquipmentList, onSave }:
       const loadEquipment = equipmentList.filter(eq => selectedLoads.includes(eq.id));
 
       // Use utility function to validate connection conflicts
-      const connectionErrors = validateConnectionConflicts(sourceEquipment, loadEquipment, generator.id);
+      const connectionErrors = validateConnectionConflicts(sourceEquipment, loadEquipment, transformer.id);
       if (connectionErrors.length > 0) {
         throw new Error(connectionErrors.join(', '));
       }
 
-      // Update generator properties
-      generator.name = name;
-      generator.capacity = capacity;
-      generator.voltage = voltage;
-      generator.fuelType = fuelType;
-      generator.efficiency = efficiency;
-      generator.isOnline = isOnline;
+      // Update transformer properties
+      transformer.name = name;
+      transformer.primaryVoltage = primaryVoltage;
+      transformer.secondaryVoltage = secondaryVoltage;
+      transformer.powerRating = powerRating;
+      transformer.phaseCount = phaseCount;
+      transformer.connectionType = connectionType;
+      transformer.impedance = impedance;
+      transformer.isOperational = isOperational;
 
       // Clear existing connections
-      Array.from(generator.sources).forEach(source => {
-        generator.removeSource(source);
+      Array.from(transformer.sources).forEach(source => {
+        transformer.removeSource(source);
       });
-      Array.from(generator.loads).forEach(load => {
-        generator.removeLoad(load);
+      Array.from(transformer.loads).forEach(load => {
+        transformer.removeLoad(load);
       });
 
       // Add new connections
       selectedSources.forEach(sourceId => {
         const source = equipmentList.find(eq => eq.id === sourceId);
         if (source) {
-          generator.addSource(source);
+          transformer.addSource(source);
         }
       });
 
       selectedLoads.forEach(loadId => {
         const load = equipmentList.find(eq => eq.id === loadId);
         if (load) {
-          generator.addLoad(load);
+          transformer.addLoad(load);
         }
       });
 
@@ -201,92 +211,117 @@ function GeneratorEditor({ generator, equipmentList, setEquipmentList, onSave }:
     }
   };
 
-  const fuelTypeOptions = ['natural_gas', 'diesel', 'solar', 'wind', 'hydro', 'nuclear', 'coal'];
+  const connectionTypeOptions = ['Delta', 'Wye'];
+  const phaseCountOptions = [1, 3];
 
   return (
     <Box sx={{ p: 2, maxWidth: 600 }}>
       <Typography variant="h6" gutterBottom>
-        Edit Generator: {generator.name}
+        Edit Transformer: {transformer.name}
       </Typography>
 
       {/* Name */}
       <TextField
         fullWidth
         margin="dense"
-        label="Generator Name"
+        label="Transformer Name"
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
 
-      {/* Capacity */}
+      {/* Primary Voltage */}
       <TextField
         fullWidth
         margin="dense"
-        label="Capacity (MW)"
+        label="Primary Voltage (kV)"
         type="number"
-        value={capacity}
-        onChange={(e) => setCapacity(Number(e.target.value))}
+        value={primaryVoltage}
+        onChange={(e) => setPrimaryVoltage(Number(e.target.value))}
       />
 
-      {/* Voltage */}
+      {/* Secondary Voltage */}
       <TextField
         fullWidth
         margin="dense"
-        label="Voltage (kV)"
+        label="Secondary Voltage (kV)"
         type="number"
-        value={voltage}
-        disabled={true} // Fixed voltage for generators
-        helperText="Change the voltage at the transformer level"
-        onChange={(e) => setVoltage(Number(e.target.value))}
+        value={secondaryVoltage}
+        onChange={(e) => setSecondaryVoltage(Number(e.target.value))}
       />
 
-      {/* Fuel Type */}
+      {/* Power Rating */}
+      <TextField
+        fullWidth
+        margin="dense"
+        label="Power Rating (MVA)"
+        type="number"
+        value={powerRating}
+        onChange={(e) => setPowerRating(Number(e.target.value))}
+      />
+
+      {/* Phase Count */}
       <FormControl fullWidth margin="dense">
-        <InputLabel>Fuel Type</InputLabel>
+        <InputLabel>Phase Count</InputLabel>
         <Select
-          value={fuelType}
-          label="Fuel Type"
-          onChange={(e) => setFuelType(e.target.value as GeneratorProperties['fuelType'])}
+          value={phaseCount}
+          label="Phase Count"
+          onChange={(e) => setPhaseCount(Number(e.target.value) as 1 | 3)}
         >
-          {fuelTypeOptions.map((fuel) => (
-            <MenuItem key={fuel} value={fuel}>
-              {fuel.replace('_', ' ').toUpperCase()}
+          {phaseCountOptions.map((phase) => (
+            <MenuItem key={phase} value={phase}>
+              {phase} Phase
             </MenuItem>
           ))}
         </Select>
       </FormControl>
 
-      {/* Efficiency */}
+      {/* Connection Type */}
+      <FormControl fullWidth margin="dense">
+        <InputLabel>Connection Type</InputLabel>
+        <Select
+          value={connectionType}
+          label="Connection Type"
+          onChange={(e) => setConnectionType(e.target.value as TransformerProperties['connectionType'])}
+        >
+          {connectionTypeOptions.map((type) => (
+            <MenuItem key={type} value={type}>
+              {type}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      {/* Impedance */}
       <TextField
         fullWidth
         margin="dense"
-        label="Efficiency (%)"
+        label="Impedance (%)"
         type="number"
-        value={efficiency}
-        onChange={(e) => setEfficiency(Number(e.target.value))}
+        value={impedance}
+        onChange={(e) => setImpedance(Number(e.target.value))}
       />
 
-      {/* Online Status */}
+      {/* Operational Status */}
       <FormControl fullWidth margin="dense">
         <InputLabel>Status</InputLabel>
         <Select
-          value={isOnline}
+          value={isOperational}
           label="Status"
-          onChange={(e) => setIsOnline(e.target.value === 'true')}
+          onChange={(e) => setIsOperational(e.target.value === 'true')}
         >
-          <MenuItem value="true">Online</MenuItem>
-          <MenuItem value="false">Offline</MenuItem>
+          <MenuItem value="true">Operational</MenuItem>
+          <MenuItem value="false">Not Operational</MenuItem>
         </Select>
       </FormControl>
 
       {/* Sources */}
       <FormControl fullWidth margin="dense">
-        <InputLabel>Sources (Optional)</InputLabel>
+        <InputLabel>Sources (Required)</InputLabel>
         <Select
           multiple
           value={selectedSources}
           onChange={(e) => handleConnectionChange(e.target.value, true)}
-          input={<OutlinedInput label="Sources (Optional)" />}
+          input={<OutlinedInput label="Sources (Required)" />}
           renderValue={(selected) => (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
               {selected.map((value) => {
@@ -308,12 +343,12 @@ function GeneratorEditor({ generator, equipmentList, setEquipmentList, onSave }:
 
       {/* Loads */}
       <FormControl fullWidth margin="dense">
-        <InputLabel>Loads (Optional)</InputLabel>
+        <InputLabel>Loads (Required)</InputLabel>
         <Select
           multiple
           value={selectedLoads}
           onChange={(e) => handleConnectionChange(e.target.value, false)}
-          input={<OutlinedInput label="Loads (Optional)" />}
+          input={<OutlinedInput label="Loads (Required)" />}
           renderValue={(selected) => (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
               {selected.map((value) => {
@@ -357,4 +392,4 @@ function GeneratorEditor({ generator, equipmentList, setEquipmentList, onSave }:
   );
 }
 
-export default GeneratorEditor;
+export default TransformerEditor;

@@ -12,27 +12,29 @@ import OutlinedInput from '@mui/material/OutlinedInput';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 
-import EquipmentBase from '../../models/equipmentBase';
-import Bus from '../../models/busEquipment';
+import EquipmentBase from '../equipmentBase';
+import Generator, { type GeneratorProperties } from '../generatorEquipment';
 import { 
   validateVoltageCompatibility,
   validateConnectionLimits,
   validateConnectionConflicts
 } from '../../utils/equipmentUtils';
 
-interface BusEditorProps {
-  bus: Bus;
+interface GeneratorEditorProps {
+  generator: Generator;
   equipmentList: EquipmentBase[];
   setEquipmentList: (eq: EquipmentBase[]) => void;
   onSave?: () => void;
 }
 
-function BusEditor({ bus, equipmentList, setEquipmentList, onSave }: BusEditorProps) {
+function GeneratorEditor({ generator, equipmentList, setEquipmentList, onSave }: GeneratorEditorProps) {
   // Form state
-  const [name, setName] = useState(bus.name);
-  const [voltage, setVoltage] = useState(bus.voltage);
-  const [allowedSources, setAllowedSources] = useState(bus.allowedSources);
-  const [allowedLoads, setAllowedLoads] = useState(bus.allowedLoads);
+  const [name, setName] = useState(generator.name);
+  const [capacity, setCapacity] = useState(generator.capacity);
+  const [voltage, setVoltage] = useState(generator.voltage);
+  const [fuelType, setFuelType] = useState(generator.fuelType);
+  const [efficiency, setEfficiency] = useState(generator.efficiency);
+  const [isOnline, setIsOnline] = useState(generator.isOnline);
   
   // Connection state
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
@@ -43,12 +45,12 @@ function BusEditor({ bus, equipmentList, setEquipmentList, onSave }: BusEditorPr
 
   // Initialize connections
   useEffect(() => {
-    setSelectedSources(Array.from(bus.sources).map(eq => eq.id));
-    setSelectedLoads(Array.from(bus.loads).map(eq => eq.id));
-  }, [bus]);
+    setSelectedSources(Array.from(generator.sources).map(eq => eq.id));
+    setSelectedLoads(Array.from(generator.loads).map(eq => eq.id));
+  }, [generator]);
 
-  // Get available equipment for connections (excluding current bus)
-  const availableEquipment = equipmentList.filter(eq => eq.id !== bus.id);
+  // Get available equipment for connections (excluding current generator)
+  const availableEquipment = equipmentList.filter(eq => eq.id !== generator.id);
 
   // Function to validate voltage compatibility using utility
   const validateVoltageCompatibilityLocal = (): string[] => {
@@ -56,7 +58,7 @@ function BusEditor({ bus, equipmentList, setEquipmentList, onSave }: BusEditorPr
       selectedSources,
       selectedLoads,
       equipmentList,
-      () => voltage, // Bus voltage is the same for both source and load connections
+      () => voltage, // Generator voltage is the same for both source and load connections
       name
     );
   };
@@ -66,21 +68,23 @@ function BusEditor({ bus, equipmentList, setEquipmentList, onSave }: BusEditorPr
     const errors: string[] = [];
     
     if (!name.trim()) {
-      errors.push('Bus name is required');
+      errors.push('Generator name is required');
     }
 
-    // Use Bus's static validation
-    Object.entries(Bus.inputProperties).forEach(([key, prop]) => {
+    Object.entries(Generator.inputProperties).forEach(([key, prop]) => {
       let value;
       switch (key) {
+        case 'capacity':
+          value = capacity;
+          break;
         case 'voltage':
           value = voltage;
           break;
-        case 'allowedSources':
-          value = allowedSources;
+        case 'fuelType':
+          value = fuelType;
           break;
-        case 'allowedLoads':
-          value = allowedLoads;
+        case 'efficiency':
+          value = efficiency;
           break;
         default:
           return;
@@ -98,13 +102,13 @@ function BusEditor({ bus, equipmentList, setEquipmentList, onSave }: BusEditorPr
     const voltageErrors = validateVoltageCompatibilityLocal();
     errors.push(...voltageErrors);
 
-    // Validate connection limits with current allowedSources/allowedLoads values
+    // Validate connection limits
     const connectionLimitErrors = validateConnectionLimits(
       selectedSources, 
       selectedLoads, 
-      allowedSources, 
-      allowedLoads, 
-      'Bus'
+      Generator.allowedSources, 
+      Generator.allowedLoads, 
+      'Generator'
     );
     errors.push(...connectionLimitErrors);
 
@@ -116,42 +120,19 @@ function BusEditor({ bus, equipmentList, setEquipmentList, onSave }: BusEditorPr
     const valueArray = typeof values === 'string' ? values.split(',') : values;
     
     if (isSource) {
-      const limitErrors = validateConnectionLimits(valueArray, selectedLoads, allowedSources, allowedLoads, 'Bus');
+      const limitErrors = validateConnectionLimits(valueArray, selectedLoads, Generator.allowedSources, Generator.allowedLoads, 'Generator');
       if (limitErrors.length > 0) {
         setValidationErrors(limitErrors);
         return;
       }
       setSelectedSources(valueArray);
     } else {
-      const limitErrors = validateConnectionLimits(selectedSources, valueArray, allowedSources, allowedLoads, 'Bus');
+      const limitErrors = validateConnectionLimits(selectedSources, valueArray, Generator.allowedSources, Generator.allowedLoads, 'Generator');
       if (limitErrors.length > 0) {
         setValidationErrors(limitErrors);
         return;
       }
       setSelectedLoads(valueArray);
-    }
-  };
-
-  // Handle changes to allowedSources/allowedLoads and validate existing connections
-  const handleAllowedConnectionsChange = (value: number, isSource: boolean) => {
-    if (isSource) {
-      setAllowedSources(value);
-      // If reducing allowed sources, validate current selections
-      if (value < selectedSources.length) {
-        setValidationErrors([`Current source selections (${selectedSources.length}) exceed new limit (${value}). Please reduce selections.`]);
-      } else {
-        // Clear previous validation errors
-        setValidationErrors([]);
-      }
-    } else {
-      setAllowedLoads(value);
-      // If reducing allowed loads, validate current selections
-      if (value < selectedLoads.length) {
-        setValidationErrors([`Current load selections (${selectedLoads.length}) exceed new limit (${value}). Please reduce selections.`]);
-      } else {
-        // Clear previous validation errors
-        setValidationErrors([]);
-      }
     }
   };
 
@@ -170,37 +151,39 @@ function BusEditor({ bus, equipmentList, setEquipmentList, onSave }: BusEditorPr
       const loadEquipment = equipmentList.filter(eq => selectedLoads.includes(eq.id));
 
       // Use utility function to validate connection conflicts
-      const connectionErrors = validateConnectionConflicts(sourceEquipment, loadEquipment, bus.id);
+      const connectionErrors = validateConnectionConflicts(sourceEquipment, loadEquipment, generator.id);
       if (connectionErrors.length > 0) {
         throw new Error(connectionErrors.join(', '));
       }
 
-      // Update bus properties
-      bus.name = name;
-      bus.voltage = voltage;
-      bus.allowedSources = allowedSources;
-      bus.allowedLoads = allowedLoads;
+      // Update generator properties
+      generator.name = name;
+      generator.capacity = capacity;
+      generator.voltage = voltage;
+      generator.fuelType = fuelType;
+      generator.efficiency = efficiency;
+      generator.isOnline = isOnline;
 
       // Clear existing connections
-      Array.from(bus.sources).forEach(source => {
-        bus.removeSource(source);
+      Array.from(generator.sources).forEach(source => {
+        generator.removeSource(source);
       });
-      Array.from(bus.loads).forEach(load => {
-        bus.removeLoad(load);
+      Array.from(generator.loads).forEach(load => {
+        generator.removeLoad(load);
       });
 
       // Add new connections
       selectedSources.forEach(sourceId => {
         const source = equipmentList.find(eq => eq.id === sourceId);
         if (source) {
-          bus.addSource(source);
+          generator.addSource(source);
         }
       });
 
       selectedLoads.forEach(loadId => {
         const load = equipmentList.find(eq => eq.id === loadId);
         if (load) {
-          bus.addLoad(load);
+          generator.addLoad(load);
         }
       });
 
@@ -218,54 +201,83 @@ function BusEditor({ bus, equipmentList, setEquipmentList, onSave }: BusEditorPr
     }
   };
 
+  const fuelTypeOptions = ['natural_gas', 'diesel', 'solar', 'wind', 'hydro', 'nuclear', 'coal'];
+
   return (
     <Box sx={{ p: 2, maxWidth: 600 }}>
       <Typography variant="h6" gutterBottom>
-        Edit Bus: {bus.name}
+        Edit Generator: {generator.name}
       </Typography>
 
       {/* Name */}
       <TextField
         fullWidth
         margin="dense"
-        label="Bus Name"
+        label="Generator Name"
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
 
-      {/* Voltage - Locked */}
+      {/* Capacity */}
+      <TextField
+        fullWidth
+        margin="dense"
+        label="Capacity (MW)"
+        type="number"
+        value={capacity}
+        onChange={(e) => setCapacity(Number(e.target.value))}
+      />
+
+      {/* Voltage */}
       <TextField
         fullWidth
         margin="dense"
         label="Voltage (kV)"
         type="number"
         value={voltage}
-        disabled={true}
-        helperText="Voltage is locked - change at the source equipment level"
+        disabled={true} // Fixed voltage for generators
+        helperText="Change the voltage at the transformer level"
         onChange={(e) => setVoltage(Number(e.target.value))}
       />
 
-      {/* Allowed Sources */}
+      {/* Fuel Type */}
+      <FormControl fullWidth margin="dense">
+        <InputLabel>Fuel Type</InputLabel>
+        <Select
+          value={fuelType}
+          label="Fuel Type"
+          onChange={(e) => setFuelType(e.target.value as GeneratorProperties['fuelType'])}
+        >
+          {fuelTypeOptions.map((fuel) => (
+            <MenuItem key={fuel} value={fuel}>
+              {fuel.replace('_', ' ').toUpperCase()}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      {/* Efficiency */}
       <TextField
         fullWidth
         margin="dense"
-        label="Maximum Source Connections"
+        label="Efficiency (%)"
         type="number"
-        value={allowedSources}
-        onChange={(e) => handleAllowedConnectionsChange(Number(e.target.value), true)}
-        helperText={`Currently connected sources: ${selectedSources.length}`}
+        value={efficiency}
+        onChange={(e) => setEfficiency(Number(e.target.value))}
       />
 
-      {/* Allowed Loads */}
-      <TextField
-        fullWidth
-        margin="dense"
-        label="Maximum Load Connections"
-        type="number"
-        value={allowedLoads}
-        onChange={(e) => handleAllowedConnectionsChange(Number(e.target.value), false)}
-        helperText={`Currently connected loads: ${selectedLoads.length}`}
-      />
+      {/* Online Status */}
+      <FormControl fullWidth margin="dense">
+        <InputLabel>Status</InputLabel>
+        <Select
+          value={isOnline}
+          label="Status"
+          onChange={(e) => setIsOnline(e.target.value === 'true')}
+        >
+          <MenuItem value="true">Online</MenuItem>
+          <MenuItem value="false">Offline</MenuItem>
+        </Select>
+      </FormControl>
 
       {/* Sources */}
       <FormControl fullWidth margin="dense">
@@ -345,4 +357,4 @@ function BusEditor({ bus, equipmentList, setEquipmentList, onSave }: BusEditorPr
   );
 }
 
-export default BusEditor;
+export default GeneratorEditor;

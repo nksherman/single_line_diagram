@@ -12,28 +12,29 @@ import OutlinedInput from '@mui/material/OutlinedInput';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 
-import EquipmentBase from '../equipmentBase';
-import Meter, { type MeterProperties } from '../meterEquipment';
+import EquipmentBase from '../../../models/equipmentBase';
+import Generator, { type GeneratorProperties } from '../../../models/generatorEquipment';
 import { 
   validateVoltageCompatibility,
   validateConnectionLimits,
   validateConnectionConflicts
-} from '../../utils/equipmentUtils';
+} from '../../../utils/equipmentUtils';
 
-interface MeterEditorProps {
-  meter: Meter;
+interface GeneratorEditorProps {
+  generator: Generator;
   equipmentList: EquipmentBase[];
   setEquipmentList: (eq: EquipmentBase[]) => void;
   onSave?: () => void;
 }
 
-function MeterEditor({ meter, equipmentList, setEquipmentList, onSave }: MeterEditorProps) {
+function GeneratorEditor({ generator, equipmentList, setEquipmentList, onSave }: GeneratorEditorProps) {
   // Form state
-  const [name, setName] = useState(meter.name);
-  const [voltageRating, setVoltageRating] = useState(meter.voltageRating);
-  const [currentRating, setCurrentRating] = useState(meter.currentRating);
-  const [accuracyClass, setAccuracyClass] = useState(meter.accuracyClass);
-  const [isOperational, setIsOperational] = useState(meter.isOperational);
+  const [name, setName] = useState(generator.name);
+  const [capacity, setCapacity] = useState(generator.capacity);
+  const [voltage, setVoltage] = useState(generator.voltage);
+  const [fuelType, setFuelType] = useState(generator.fuelType);
+  const [efficiency, setEfficiency] = useState(generator.efficiency);
+  const [isOnline, setIsOnline] = useState(generator.isOnline);
   
   // Connection state
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
@@ -44,12 +45,12 @@ function MeterEditor({ meter, equipmentList, setEquipmentList, onSave }: MeterEd
 
   // Initialize connections
   useEffect(() => {
-    setSelectedSources(Array.from(meter.sources).map(eq => eq.id));
-    setSelectedLoads(Array.from(meter.loads).map(eq => eq.id));
-  }, [meter]);
+    setSelectedSources(Array.from(generator.sources).map(eq => eq.id));
+    setSelectedLoads(Array.from(generator.loads).map(eq => eq.id));
+  }, [generator]);
 
-  // Get available equipment for connections (excluding current meter)
-  const availableEquipment = equipmentList.filter(eq => eq.id !== meter.id);
+  // Get available equipment for connections (excluding current generator)
+  const availableEquipment = equipmentList.filter(eq => eq.id !== generator.id);
 
   // Function to validate voltage compatibility using utility
   const validateVoltageCompatibilityLocal = (): string[] => {
@@ -57,7 +58,7 @@ function MeterEditor({ meter, equipmentList, setEquipmentList, onSave }: MeterEd
       selectedSources,
       selectedLoads,
       equipmentList,
-      () => voltageRating, // Meter voltage is the same for both source and load connections
+      () => voltage, // Generator voltage is the same for both source and load connections
       name
     );
   };
@@ -67,20 +68,23 @@ function MeterEditor({ meter, equipmentList, setEquipmentList, onSave }: MeterEd
     const errors: string[] = [];
     
     if (!name.trim()) {
-      errors.push('Meter name is required');
+      errors.push('Generator name is required');
     }
 
-    Object.entries(Meter.inputProperties).forEach(([key, prop]) => {
+    Object.entries(Generator.inputProperties).forEach(([key, prop]) => {
       let value;
       switch (key) {
-        case 'voltageRating':
-          value = voltageRating;
+        case 'capacity':
+          value = capacity;
           break;
-        case 'currentRating':
-          value = currentRating;
+        case 'voltage':
+          value = voltage;
           break;
-        case 'accuracyClass':
-          value = accuracyClass;
+        case 'fuelType':
+          value = fuelType;
+          break;
+        case 'efficiency':
+          value = efficiency;
           break;
         default:
           return;
@@ -102,9 +106,9 @@ function MeterEditor({ meter, equipmentList, setEquipmentList, onSave }: MeterEd
     const connectionLimitErrors = validateConnectionLimits(
       selectedSources, 
       selectedLoads, 
-      Meter.allowedSources, 
-      Meter.allowedLoads, 
-      'Meter'
+      Generator.allowedSources, 
+      Generator.allowedLoads, 
+      'Generator'
     );
     errors.push(...connectionLimitErrors);
 
@@ -116,14 +120,14 @@ function MeterEditor({ meter, equipmentList, setEquipmentList, onSave }: MeterEd
     const valueArray = typeof values === 'string' ? values.split(',') : values;
     
     if (isSource) {
-      const limitErrors = validateConnectionLimits(valueArray, selectedLoads, Meter.allowedSources, Meter.allowedLoads, 'Meter');
+      const limitErrors = validateConnectionLimits(valueArray, selectedLoads, Generator.allowedSources, Generator.allowedLoads, 'Generator');
       if (limitErrors.length > 0) {
         setValidationErrors(limitErrors);
         return;
       }
       setSelectedSources(valueArray);
     } else {
-      const limitErrors = validateConnectionLimits(selectedSources, valueArray, Meter.allowedSources, Meter.allowedLoads, 'Meter');
+      const limitErrors = validateConnectionLimits(selectedSources, valueArray, Generator.allowedSources, Generator.allowedLoads, 'Generator');
       if (limitErrors.length > 0) {
         setValidationErrors(limitErrors);
         return;
@@ -147,38 +151,39 @@ function MeterEditor({ meter, equipmentList, setEquipmentList, onSave }: MeterEd
       const loadEquipment = equipmentList.filter(eq => selectedLoads.includes(eq.id));
 
       // Use utility function to validate connection conflicts
-      const connectionErrors = validateConnectionConflicts(sourceEquipment, loadEquipment, meter.id);
+      const connectionErrors = validateConnectionConflicts(sourceEquipment, loadEquipment, generator.id);
       if (connectionErrors.length > 0) {
         throw new Error(connectionErrors.join(', '));
       }
 
-      // Update meter properties
-      meter.name = name;
-      meter.voltageRating = voltageRating;
-      meter.currentRating = currentRating;
-      meter.accuracyClass = accuracyClass;
-      meter.isOperational = isOperational;
+      // Update generator properties
+      generator.name = name;
+      generator.capacity = capacity;
+      generator.voltage = voltage;
+      generator.fuelType = fuelType;
+      generator.efficiency = efficiency;
+      generator.isOnline = isOnline;
 
       // Clear existing connections
-      Array.from(meter.sources).forEach(source => {
-        meter.removeSource(source);
+      Array.from(generator.sources).forEach(source => {
+        generator.removeSource(source);
       });
-      Array.from(meter.loads).forEach(load => {
-        meter.removeLoad(load);
+      Array.from(generator.loads).forEach(load => {
+        generator.removeLoad(load);
       });
 
       // Add new connections
       selectedSources.forEach(sourceId => {
         const source = equipmentList.find(eq => eq.id === sourceId);
         if (source) {
-          meter.addSource(source);
+          generator.addSource(source);
         }
       });
 
       selectedLoads.forEach(loadId => {
         const load = equipmentList.find(eq => eq.id === loadId);
         if (load) {
-          meter.addLoad(load);
+          generator.addLoad(load);
         }
       });
 
@@ -196,80 +201,92 @@ function MeterEditor({ meter, equipmentList, setEquipmentList, onSave }: MeterEd
     }
   };
 
-  const accuracyClassOptions = ['0.2', '0.5', '1.0', '2.0'];
+  const fuelTypeOptions = ['natural_gas', 'diesel', 'solar', 'wind', 'hydro', 'nuclear', 'coal'];
 
   return (
     <Box sx={{ p: 2, maxWidth: 600 }}>
       <Typography variant="h6" gutterBottom>
-        Edit Meter: {meter.name}
+        Edit Generator: {generator.name}
       </Typography>
 
       {/* Name */}
       <TextField
         fullWidth
         margin="dense"
-        label="Meter Name"
+        label="Generator Name"
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
 
-      {/* Voltage Rating */}
+      {/* Capacity */}
       <TextField
         fullWidth
         margin="dense"
-        label="Voltage Rating (kV)"
+        label="Capacity (MW)"
         type="number"
-        value={voltageRating}
-        onChange={(e) => setVoltageRating(Number(e.target.value))}
+        value={capacity}
+        onChange={(e) => setCapacity(Number(e.target.value))}
       />
 
-      {/* Current Rating */}
+      {/* Voltage */}
       <TextField
         fullWidth
         margin="dense"
-        label="Current Rating (A)"
+        label="Voltage (kV)"
         type="number"
-        value={currentRating}
-        onChange={(e) => setCurrentRating(Number(e.target.value))}
+        value={voltage}
+        disabled={true} // Fixed voltage for generators
+        helperText="Change the voltage at the transformer level"
+        onChange={(e) => setVoltage(Number(e.target.value))}
       />
 
-      {/* Accuracy Class */}
+      {/* Fuel Type */}
       <FormControl fullWidth margin="dense">
-        <InputLabel>Accuracy Class</InputLabel>
+        <InputLabel>Fuel Type</InputLabel>
         <Select
-          value={accuracyClass}
-          label="Accuracy Class"
-          onChange={(e) => setAccuracyClass(e.target.value as MeterProperties['accuracyClass'])}
+          value={fuelType}
+          label="Fuel Type"
+          onChange={(e) => setFuelType(e.target.value as GeneratorProperties['fuelType'])}
         >
-          {accuracyClassOptions.map((accuracy) => (
-            <MenuItem key={accuracy} value={accuracy}>
-              Class {accuracy}
+          {fuelTypeOptions.map((fuel) => (
+            <MenuItem key={fuel} value={fuel}>
+              {fuel.replace('_', ' ').toUpperCase()}
             </MenuItem>
           ))}
         </Select>
       </FormControl>
 
-      {/* Operational Status */}
+      {/* Efficiency */}
+      <TextField
+        fullWidth
+        margin="dense"
+        label="Efficiency (%)"
+        type="number"
+        value={efficiency}
+        onChange={(e) => setEfficiency(Number(e.target.value))}
+      />
+
+      {/* Online Status */}
       <FormControl fullWidth margin="dense">
         <InputLabel>Status</InputLabel>
         <Select
-          value={isOperational}
+          value={isOnline}
           label="Status"
-          onChange={(e) => setIsOperational(e.target.value === 'true')}
+          onChange={(e) => setIsOnline(e.target.value === 'true')}
         >
-          <MenuItem value="true">Operational</MenuItem>
-          <MenuItem value="false">Not Operational</MenuItem>
+          <MenuItem value="true">Online</MenuItem>
+          <MenuItem value="false">Offline</MenuItem>
         </Select>
       </FormControl>
 
       {/* Sources */}
       <FormControl fullWidth margin="dense">
-        <InputLabel>Sources (Required)</InputLabel>
+        <InputLabel>Sources (Optional)</InputLabel>
         <Select
           multiple
           value={selectedSources}
           onChange={(e) => handleConnectionChange(e.target.value, true)}
-          input={<OutlinedInput label="Sources (Required)" />}
+          input={<OutlinedInput label="Sources (Optional)" />}
           renderValue={(selected) => (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
               {selected.map((value) => {
@@ -340,4 +357,4 @@ function MeterEditor({ meter, equipmentList, setEquipmentList, onSave }: MeterEd
   );
 }
 
-export default MeterEditor;
+export default GeneratorEditor;

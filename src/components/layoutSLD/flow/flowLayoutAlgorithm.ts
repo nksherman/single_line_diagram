@@ -21,6 +21,8 @@ export interface LayoutResult {
     id: string;
     source: string;
     target: string;
+    sourceHandle?: string;
+    targetHandle?: string;
   }>;
 }
 
@@ -176,19 +178,46 @@ export function generateEdgesFromItems(items: LayoutNode[]): Array<{
   id: string;
   source: string;
   target: string;
+  sourceHandle?: string;
+  targetHandle?: string;
 }> {
-  const edges: Array<{ id: string; source: string; target: string }> = [];
+  const edges: Array<{ 
+    id: string; 
+    source: string; 
+    target: string;
+    sourceHandle?: string;
+    targetHandle?: string;
+  }> = [];
   
   items.forEach(item => {
-    item.loads.forEach(load => {
+    item.loads.forEach((load, loadIndex) => {
+      // Determine source handle based on equipment type
+      let sourceHandle = 'bottom';
+      if (item.type === 'Bus') {
+        sourceHandle = `bottom-${loadIndex}`;
+      }
+      
+      // Determine target handle - for bus equipment, find which source index this connection represents
+      let targetHandle = 'top';
+      const targetItem = items.find(i => i.id === load.id);
+      if (targetItem?.type === 'Bus') {
+        // Find the index of this source connection in the target bus
+        const sourceIndex = Array.from(targetItem.loads).findIndex(l => l.id === item.id);
+        if (sourceIndex >= 0) {
+          targetHandle = `top-${sourceIndex}`;
+        }
+      }
+      
       edges.push({
         id: `${item.id}-${load.id}`,
         source: item.id,
         target: load.id,
+        sourceHandle,
+        targetHandle,
       });
     });
   });
-  
+
   return edges;
 }
 

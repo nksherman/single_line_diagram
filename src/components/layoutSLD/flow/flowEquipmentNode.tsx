@@ -15,14 +15,11 @@ interface ReactFlowEquipmentNodeProps {
   };
 }
 
-interface TextElement {
-  id: string;
-  text: string;
-  position: 'top' | 'bottom' | 'left' | 'right' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'left-top' | 'left-bottom' | 'right-top' | 'right-bottom';
-  align: 'left' | 'center' | 'right';
-  fontSize?: number;
-  color?: string;
-  offset?: { x: number; y: number };
+interface TextGroup {
+  left: string[];
+  right: string[];
+  top?: string;
+  bottom?: string;
 }
 
 const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data }) => {
@@ -32,7 +29,7 @@ const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data })
     onEdit(equipment);
   };
 
-  // Get equipment size based on type
+  // Get equipment icon size based on type
   const getEquipmentSize = (type: string): { width: number; height: number } => {
     const sizes: Record<string, { width: number; height: number }> = {
       Generator: { width: 40, height: 40 },
@@ -51,147 +48,74 @@ const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data })
     return `/icons/${type.toLowerCase()}.svg`;
   };
 
-  // Generate text elements based on equipment type and properties
-  const getTextElements = (equipment: EquipmentBase): TextElement[] => {
-    const textElements: TextElement[] = [];
-
-    // Equipment name (common to all)
-    textElements.push({
-      id: `${equipment.id}-name`,
-      text: equipment.name,
-      position: 'top-right',
-      align: 'left',
-      fontSize: 12
-    });
+  // Generate text groups based on equipment type and properties
+  const getTextGroups = (equipment: EquipmentBase): TextGroup => {
+    const textGroup: TextGroup = {
+      left: [],
+      right: [],
+      top: equipment.name
+    };
 
     // Type-specific text elements
     if (equipment instanceof Generator) {
       const gen = equipment as Generator;
-      textElements.push(
-        {
-          id: `${gen.id}-capacity`,
-          text: `${gen.capacity}MW`,
-          position: 'left-top',
-          align: 'right',
-          fontSize: 10,
-          color: 'blue'
-        },
-        {
-          id: `${gen.id}-voltage`,
-          text: `${gen.voltage}kV`,
-          position: 'left-bottom',
-          align: 'right',
-          fontSize: 10,
-          color: 'green'
-        },
-        {
-          id: `${gen.id}-status`,
-          text: gen.isOnline ? 'ON' : 'OFF',
-          position: 'right',
-          align: 'left',
-          fontSize: 10,
-          color: gen.isOnline ? 'green' : 'red',
-          offset: { x: 5, y: 0 }
-        }
-      );
+      textGroup.right = [
+        `${gen.capacity}MW`,
+      ];
+      textGroup.bottom = `${gen.voltage}kV`;
+
     } else if (equipment instanceof Transformer) {
       const trans = equipment as Transformer;
-      textElements.push(
-        {
-          id: `${trans.id}-primary-voltage`,
-          text: `${trans.primaryVoltage}kV`,
-          position: 'left-top',
-          align: 'right',
-          fontSize: 10,
-          color: 'blue'
-        },
-        {
-          id: `${trans.id}-secondary-voltage`,
-          text: `${trans.secondaryVoltage}kV`,
-          position: 'left-bottom',
-          align: 'right',
-          fontSize: 10,
-          color: 'green'
-        },
-        {
-          id: `${trans.id}-power-rating`,
-          text: `${trans.powerRating}MVA`,
-          position: 'right-top',
-          align: 'left',
-          fontSize: 10,
-          color: 'purple'
-        },
-        {
-          id: `${trans.id}-phase-count`,
-          text: `${trans.phaseCount} Phases`,
-          position: 'right',
-          align: 'left',
-          fontSize: 10,
-          offset: { x: 5, y: 0 }
-        },
-        {
-          id: `${trans.id}-connection-type`,
-          text: trans.connectionType,
-          position: 'right-bottom',
-          align: 'left',
-          fontSize: 10,
-          color: 'orange'
-        }
-      );
+      textGroup.left = [
+        `${trans.powerRating}MVA`
+      ];
+      textGroup.right = [
+        `${trans.primaryVoltage}kV`,
+        `${trans.secondaryVoltage}kV`
+      ];
     } else if (equipment instanceof Bus) {
       const bus = equipment as Bus;
-      textElements.push({
-        id: `${bus.id}-voltage`,
-        text: `${bus.voltage}kV`,
-        position: 'top-left',
-        align: 'center',
-        fontSize: 10,
-        color: 'blue'
-      });
+      textGroup.right = [`${bus.voltage}kV`];
     } else if (equipment instanceof Meter) {
       const meter = equipment as Meter;
-      textElements.push(
-        {
-          id: `${meter.id}-voltage`,
-          text: `${meter.voltageRating}kV`,
-          position: 'top-left',
-          align: 'right',
-          fontSize: 10,
-          color: 'blue'
-        },
-        {
-          id: `${meter.id}-current`,
-          text: `${meter.currentRating}A`,
-          position: 'right',
-          align: 'left',
-          fontSize: 10,
-          color: 'green'
-        },
-        {
-          id: `${meter.id}-accuracy`,
-          text: `Class ${meter.accuracyClass}`,
-          position: 'right-bottom',
-          align: 'left',
-          fontSize: 10,
-          color: 'orange'
-        },
-        {
-          id: `${meter.id}-status`,
-          text: meter.isOperational ? 'Operational' : 'Not Operational',
-          position: 'bottom-left',
-          align: 'right',
-          fontSize: 10,
-          color: meter.isOperational ? 'green' : 'red'
-        }
-      );
+      textGroup.right = [
+        `${meter.currentRating}A`,
+        `${meter.voltageRating}kV`,
+      ];
     }
 
-    return textElements;
+    return textGroup;
+  };
+
+  // Calculate dynamic width based on text content
+  const calculateWidth = (textGroups: TextGroup, iconWidth: number): number => {
+    const baseIconWidth = iconWidth;
+    
+    // Estimate text width (rough approximation)
+    const estimateTextWidth = (texts: string[]): number => {
+      if (texts.length === 0) return 0;
+      const maxLength = Math.max(...texts.map(text => text.length));
+      return Math.max(maxLength * 10); // Rough character width estimation
+    };
+
+    const leftWidth = estimateTextWidth(textGroups.left);
+    const rightWidth = estimateTextWidth(textGroups.right);
+    const topBottomWidth = Math.max(
+      estimateTextWidth(textGroups.top ? [textGroups.top] : []),
+      estimateTextWidth(textGroups.bottom ? [textGroups.bottom] : [])
+    );
+
+    return Math.max(
+      baseIconWidth + leftWidth + rightWidth,
+      topBottomWidth,
+      40 // Minimum width
+    );
   };
 
   const equipmentSize = getEquipmentSize(equipment.type);
   const iconPath = getIconPath(equipment.type);
-  const textElements = getTextElements(equipment);
+  const textGroups = getTextGroups(equipment);
+  const nodeWidth = calculateWidth(textGroups, equipmentSize.width);
 
   const getNodeColor = (type: string) => {
     switch (type.toLowerCase()) {
@@ -210,116 +134,52 @@ const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data })
     }
   };
 
-  // Convert Konva text positioning to CSS positioning
-  const getTextStyle = (textElement: TextElement, nodeWidth: number, _nodeHeight: number): React.CSSProperties => {
-    const { position, align, fontSize = 12, color = 'black', offset = { x: 0, y: 0 } } = textElement;
+  // Generate handles for bus equipment
+  const generateBusHandles = (equipment: EquipmentBase, source: boolean, side: 'left' | 'right' | 'top' | 'bottom') => {
+    if (!(equipment instanceof Bus)) return null;
+    const bus = equipment as Bus;
+
+    const pos = side === 'top' ? Position.Top : side === 'bottom' ? Position.Bottom : side === 'left' ? Position.Left : Position.Right;
+
+    let handlesCount = 0;
+    if (source) {;
+      handlesCount = bus.sources?.size || 1;
+      
+    } else {
+      handlesCount = bus.loads?.size || 1;
+    }
     
-    let style: React.CSSProperties = {
-      position: 'absolute',
-      fontSize: `${fontSize}px`,
-      color,
-      whiteSpace: 'nowrap',
-      lineHeight: '1',
-      pointerEvents: 'none',
-      zIndex: 10,
-    };
-
-    // Position the text relative to the node
-    switch (position) {
-      case 'top':
-        style.top = '-20px';
-        style.left = '50%';
-        style.transform = 'translateX(-50%)';
-        break;
-      case 'bottom':
-        style.bottom = '-20px';
-        style.left = '50%';
-        style.transform = 'translateX(-50%)';
-        break;
-      case 'left':
-        style.top = '50%';
-        style.right = `${nodeWidth + 10}px`;
-        style.transform = 'translateY(-50%)';
-        break;
-      case 'right':
-        style.top = '50%';
-        style.left = `${nodeWidth + 10}px`;
-        style.transform = 'translateY(-50%)';
-        break;
-      case 'top-left':
-        style.top = '-20px';
-        style.left = '0px';
-        break;
-      case 'top-right':
-        style.top = '-20px';
-        style.right = '0px';
-        break;
-      case 'bottom-left':
-        style.bottom = '-20px';
-        style.left = '0px';
-        break;
-      case 'bottom-right':
-        style.bottom = '-20px';
-        style.right = '0px';
-        break;
-      case 'left-top':
-        style.top = '0px';
-        style.right = `${nodeWidth + 10}px`;
-        break;
-      case 'left-bottom':
-        style.bottom = '0px';
-        style.right = `${nodeWidth + 10}px`;
-        break;
-      case 'right-top':
-        style.top = '0px';
-        style.left = `${nodeWidth + 10}px`;
-        break;
-      case 'right-bottom':
-        style.bottom = '0px';
-        style.left = `${nodeWidth + 10}px`;
-        break;
-      default:
-        style.top = '50%';
-        style.left = '50%';
-        style.transform = 'translate(-50%, -50%)';
-        break;
+    const handles = [];
+    for (let i = 0; i < handlesCount; i++) {
+      handles.push(
+        <Handle
+          key={`${side}-${i}`}
+          type="target"
+          position={pos}
+          id={`${side}-${i}`}
+          style={{ 
+            background: getNodeColor(equipment.type),
+            left: side === 'top' || side === 'bottom' ? `${((i + 1) / (handlesCount + 1)) * 100}%` : undefined,
+            top: side === 'left' || side === 'right' ? `${((i + 1) / (handlesCount + 1)) * 100}%` : undefined,
+          }}
+        />
+      );
     }
-
-    // Apply text alignment
-    if (align === 'center') {
-      if (!style.transform) style.transform = '';
-      if (position === 'top' || position === 'bottom') {
-        // Already centered for top/bottom
-      } else {
-        style.transform += ' translateX(-50%)';
-      }
-    } else if (align === 'right') {
-      style.textAlign = 'right';
-    }
-
-    // Apply offset
-    if (offset.x !== 0 || offset.y !== 0) {
-      const currentTransform = style.transform || '';
-      style.transform = `${currentTransform} translate(${offset.x}px, ${offset.y}px)`;
-    }
-
-    return style;
+    
+    return handles;
   };
 
   return (
     <Box
       sx={{
         position: 'relative',
-        padding: 1,
+        paddingx: 1,
         border: '2px solid',
         borderColor: getNodeColor(equipment.type),
         borderRadius: 1,
         backgroundColor: 'white',
-        width: equipmentSize.width + 16, // Add padding
-        height: equipmentSize.height + 16,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        width: nodeWidth,
+        minHeight: equipmentSize.height,
         cursor: 'pointer',
         '&:hover': {
           backgroundColor: '#f5f5f5',
@@ -329,50 +189,167 @@ const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data })
       onDoubleClick={handleDoubleClick}
     >
       {/* Top handle for connections from sources */}
-      <Handle
-        type="target"
-        position={Position.Top}
-        id="top"
-        style={{ background: getNodeColor(equipment.type) }}
-      />
+      {equipment instanceof Bus ? (
+        <>
+          {generateBusHandles(equipment, true, 'top')}
+        </>
+      ) : (
+        <Handle
+          type="target"
+          position={Position.Top}
+          id="top"
+          style={{ background: getNodeColor(equipment.type) }}
+        />
+      )}
       
-      {/* SVG Icon */}
-      <Box
-        component="img"
-        src={iconPath}
-        alt={equipment.type}
-        sx={{
-          width: equipmentSize.width,
-          height: equipmentSize.height,
-          objectFit: 'contain',
-        }}
-        onError={(e) => {
-          // Fallback to colored rectangle if SVG fails to load
-          const target = e.target as HTMLImageElement;
-          target.style.display = 'none';
-          target.parentElement!.style.backgroundColor = getNodeColor(equipment.type);
-          target.parentElement!.style.opacity = '0.3';
-        }}
-      />
-      
-      {/* Render all text elements */}
-      {textElements.map(textElement => (
+      {/* Top text */}
+      {textGroups.top && (
         <Typography
-          key={textElement.id}
           variant="body2"
-          sx={getTextStyle(textElement, equipmentSize.width + 16, equipmentSize.height + 16)}
+          sx={{
+            position: 'absolute',
+            top: -20,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            fontSize: 12,
+            fontWeight: 'bold',
+            whiteSpace: 'nowrap',
+            pointerEvents: 'none',
+            zIndex: 10,
+          }}
         >
-          {textElement.text}
+          {textGroups.top}
         </Typography>
-      ))}
+      )}
+
+      {/* Main content container */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100%',
+          gap: 1,
+        }}
+      >
+        {/* Left gutter */}
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+            gap: 0.5,
+            minWidth: 'fit-content',
+          }}
+        >
+          {textGroups.left.map((text, index) => (
+            <Typography
+              key={`left-${index}`}
+              variant="body2"
+              sx={{
+                fontSize: 10,
+                color: index === 0 ? 'blue' : 'green',
+                whiteSpace: 'nowrap',
+                lineHeight: 1,
+              }}
+            >
+              {text}
+            </Typography>
+          ))}
+        </Box>
+
+        {/* Center - SVG Icon */}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <Box
+            component="img"
+            src={iconPath}
+            alt={equipment.type}
+            sx={{
+              width: equipmentSize.width,
+              height: equipmentSize.height,
+              objectFit: 'contain',
+            }}
+            onError={(e) => {
+              // Fallback to colored rectangle if SVG fails to load
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              target.parentElement!.style.backgroundColor = getNodeColor(equipment.type);
+              target.parentElement!.style.opacity = '0.3';
+            }}
+          />
+        </Box>
+
+        {/* Right gutter */}
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            gap: 0.5,
+            minWidth: 'fit-content',
+          }}
+        >
+          {textGroups.right.map((text, index) => {
+            let color = 'black';
+            return (
+              <Typography
+                key={`right-${index}`}
+                variant="body2"
+                sx={{
+                  fontSize: 10,
+                  color,
+                  whiteSpace: 'nowrap',
+                  lineHeight: 1,
+                }}
+              >
+                {text}
+              </Typography>
+            );
+          })}
+        </Box>
+      </Box>
+
+      {/* Bottom text */}
+      {textGroups.bottom && (
+        <Typography
+          variant="body2"
+          sx={{
+            position: 'absolute',
+            bottom: -20,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            fontSize: 10,
+            whiteSpace: 'nowrap',
+            pointerEvents: 'none',
+            zIndex: 10,
+          }}
+        >
+          {textGroups.bottom}
+        </Typography>
+      )}
       
       {/* Bottom handle for connections to loads */}
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="bottom"
-        style={{ background: getNodeColor(equipment.type) }}
-      />
+      {equipment instanceof Bus ? (
+        <>
+          {generateBusHandles(equipment, false, 'bottom')}
+        </>
+      ) : (
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          id="bottom"
+          style={{ background: getNodeColor(equipment.type) }}
+        />
+      )}
     </Box>
   );
 };

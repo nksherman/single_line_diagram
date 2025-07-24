@@ -191,8 +191,7 @@ export class EquipmentBase {
     return true;
   }
 
-    /** Saving and Loading methods  */
-
+  /** Saving and Loading methods  */
   toJSON(): EquipmentBaseData {
     return {
       id: this.id,

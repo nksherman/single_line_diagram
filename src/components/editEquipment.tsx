@@ -9,10 +9,10 @@ import Bus from '../models/busEquipment';
 import Transformer from '../models/transformerEquipment';
 import MeterEquipment from '../models/meterEquipment';
 
-import GeneratorEditor from './modelComponents/generatorEditor';
-import BusEditor from './modelComponents/busEditor';
-import TransformerEditor from './modelComponents/transformerEditor';
-import MeterEditor from './modelComponents/meterEditor';
+import GeneratorEditor from './modelComponents/editor/generatorEditor';
+import BusEditor from './modelComponents/editor/busEditor';
+import TransformerEditor from './modelComponents/editor/transformerEditor';
+import MeterEditor from './modelComponents/editor/meterEditor';
 
 /**
  * Component to edit some equipment after creation.

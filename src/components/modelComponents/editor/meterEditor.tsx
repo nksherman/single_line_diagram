@@ -12,31 +12,28 @@ import OutlinedInput from '@mui/material/OutlinedInput';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 
-import EquipmentBase from '../equipmentBase';
-import Transformer, { type TransformerProperties } from '../transformerEquipment';
+import EquipmentBase from '../../../models/equipmentBase';
+import Meter, { type MeterProperties } from '../../../models/meterEquipment';
 import { 
   validateVoltageCompatibility,
   validateConnectionLimits,
   validateConnectionConflicts
-} from '../../utils/equipmentUtils';
+} from '../../../utils/equipmentUtils';
 
-interface TransformerEditorProps {
-  transformer: Transformer;
+interface MeterEditorProps {
+  meter: Meter;
   equipmentList: EquipmentBase[];
   setEquipmentList: (eq: EquipmentBase[]) => void;
   onSave?: () => void;
 }
 
-function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSave }: TransformerEditorProps) {
+function MeterEditor({ meter, equipmentList, setEquipmentList, onSave }: MeterEditorProps) {
   // Form state
-  const [name, setName] = useState(transformer.name);
-  const [primaryVoltage, setPrimaryVoltage] = useState(transformer.primaryVoltage);
-  const [secondaryVoltage, setSecondaryVoltage] = useState(transformer.secondaryVoltage);
-  const [powerRating, setPowerRating] = useState(transformer.powerRating);
-  const [phaseCount, setPhaseCount] = useState(transformer.phaseCount);
-  const [connectionType, setConnectionType] = useState(transformer.connectionType);
-  const [impedance, setImpedance] = useState(transformer.impedance);
-  const [isOperational, setIsOperational] = useState(transformer.isOperational);
+  const [name, setName] = useState(meter.name);
+  const [voltageRating, setVoltageRating] = useState(meter.voltageRating);
+  const [currentRating, setCurrentRating] = useState(meter.currentRating);
+  const [accuracyClass, setAccuracyClass] = useState(meter.accuracyClass);
+  const [isOperational, setIsOperational] = useState(meter.isOperational);
   
   // Connection state
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
@@ -47,12 +44,12 @@ function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSav
 
   // Initialize connections
   useEffect(() => {
-    setSelectedSources(Array.from(transformer.sources).map(eq => eq.id));
-    setSelectedLoads(Array.from(transformer.loads).map(eq => eq.id));
-  }, [transformer]);
+    setSelectedSources(Array.from(meter.sources).map(eq => eq.id));
+    setSelectedLoads(Array.from(meter.loads).map(eq => eq.id));
+  }, [meter]);
 
-  // Get available equipment for connections (excluding current transformer)
-  const availableEquipment = equipmentList.filter(eq => eq.id !== transformer.id);
+  // Get available equipment for connections (excluding current meter)
+  const availableEquipment = equipmentList.filter(eq => eq.id !== meter.id);
 
   // Function to validate voltage compatibility using utility
   const validateVoltageCompatibilityLocal = (): string[] => {
@@ -60,7 +57,7 @@ function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSav
       selectedSources,
       selectedLoads,
       equipmentList,
-      (connectionType: "source" | "load") => connectionType === "source" ? primaryVoltage : secondaryVoltage, // Use primary voltage for sources, secondary for loads
+      () => voltageRating, // Meter voltage is the same for both source and load connections
       name
     );
   };
@@ -70,29 +67,20 @@ function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSav
     const errors: string[] = [];
     
     if (!name.trim()) {
-      errors.push('Transformer name is required');
+      errors.push('Meter name is required');
     }
 
-    Object.entries(Transformer.inputProperties).forEach(([key, prop]) => {
+    Object.entries(Meter.inputProperties).forEach(([key, prop]) => {
       let value;
       switch (key) {
-        case 'primaryVoltage':
-          value = primaryVoltage;
+        case 'voltageRating':
+          value = voltageRating;
           break;
-        case 'secondaryVoltage':
-          value = secondaryVoltage;
+        case 'currentRating':
+          value = currentRating;
           break;
-        case 'powerRating':
-          value = powerRating;
-          break;
-        case 'phaseCount':
-          value = phaseCount;
-          break;
-        case 'connectionType':
-          value = connectionType;
-          break;
-        case 'impedance':
-          value = impedance;
+        case 'accuracyClass':
+          value = accuracyClass;
           break;
         default:
           return;
@@ -114,9 +102,9 @@ function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSav
     const connectionLimitErrors = validateConnectionLimits(
       selectedSources, 
       selectedLoads, 
-      Transformer.allowedSources, 
-      Transformer.allowedLoads, 
-      'Transformer'
+      Meter.allowedSources, 
+      Meter.allowedLoads, 
+      'Meter'
     );
     errors.push(...connectionLimitErrors);
 
@@ -128,14 +116,14 @@ function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSav
     const valueArray = typeof values === 'string' ? values.split(',') : values;
     
     if (isSource) {
-      const limitErrors = validateConnectionLimits(valueArray, selectedLoads, Transformer.allowedSources, Transformer.allowedLoads, 'Transformer');
+      const limitErrors = validateConnectionLimits(valueArray, selectedLoads, Meter.allowedSources, Meter.allowedLoads, 'Meter');
       if (limitErrors.length > 0) {
         setValidationErrors(limitErrors);
         return;
       }
       setSelectedSources(valueArray);
     } else {
-      const limitErrors = validateConnectionLimits(selectedSources, valueArray, Transformer.allowedSources, Transformer.allowedLoads, 'Transformer');
+      const limitErrors = validateConnectionLimits(selectedSources, valueArray, Meter.allowedSources, Meter.allowedLoads, 'Meter');
       if (limitErrors.length > 0) {
         setValidationErrors(limitErrors);
         return;
@@ -159,41 +147,38 @@ function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSav
       const loadEquipment = equipmentList.filter(eq => selectedLoads.includes(eq.id));
 
       // Use utility function to validate connection conflicts
-      const connectionErrors = validateConnectionConflicts(sourceEquipment, loadEquipment, transformer.id);
+      const connectionErrors = validateConnectionConflicts(sourceEquipment, loadEquipment, meter.id);
       if (connectionErrors.length > 0) {
         throw new Error(connectionErrors.join(', '));
       }
 
-      // Update transformer properties
-      transformer.name = name;
-      transformer.primaryVoltage = primaryVoltage;
-      transformer.secondaryVoltage = secondaryVoltage;
-      transformer.powerRating = powerRating;
-      transformer.phaseCount = phaseCount;
-      transformer.connectionType = connectionType;
-      transformer.impedance = impedance;
-      transformer.isOperational = isOperational;
+      // Update meter properties
+      meter.name = name;
+      meter.voltageRating = voltageRating;
+      meter.currentRating = currentRating;
+      meter.accuracyClass = accuracyClass;
+      meter.isOperational = isOperational;
 
       // Clear existing connections
-      Array.from(transformer.sources).forEach(source => {
-        transformer.removeSource(source);
+      Array.from(meter.sources).forEach(source => {
+        meter.removeSource(source);
       });
-      Array.from(transformer.loads).forEach(load => {
-        transformer.removeLoad(load);
+      Array.from(meter.loads).forEach(load => {
+        meter.removeLoad(load);
       });
 
       // Add new connections
       selectedSources.forEach(sourceId => {
         const source = equipmentList.find(eq => eq.id === sourceId);
         if (source) {
-          transformer.addSource(source);
+          meter.addSource(source);
         }
       });
 
       selectedLoads.forEach(loadId => {
         const load = equipmentList.find(eq => eq.id === loadId);
         if (load) {
-          transformer.addLoad(load);
+          meter.addLoad(load);
         }
       });
 
@@ -211,95 +196,58 @@ function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSav
     }
   };
 
-  const connectionTypeOptions = ['Delta', 'Wye'];
-  const phaseCountOptions = [1, 3];
+  const accuracyClassOptions = ['0.2', '0.5', '1.0', '2.0'];
 
   return (
     <Box sx={{ p: 2, maxWidth: 600 }}>
       <Typography variant="h6" gutterBottom>
-        Edit Transformer: {transformer.name}
+        Edit Meter: {meter.name}
       </Typography>
 
       {/* Name */}
       <TextField
         fullWidth
         margin="dense"
-        label="Transformer Name"
+        label="Meter Name"
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
 
-      {/* Primary Voltage */}
+      {/* Voltage Rating */}
       <TextField
         fullWidth
         margin="dense"
-        label="Primary Voltage (kV)"
+        label="Voltage Rating (kV)"
         type="number"
-        value={primaryVoltage}
-        onChange={(e) => setPrimaryVoltage(Number(e.target.value))}
+        value={voltageRating}
+        onChange={(e) => setVoltageRating(Number(e.target.value))}
       />
 
-      {/* Secondary Voltage */}
+      {/* Current Rating */}
       <TextField
         fullWidth
         margin="dense"
-        label="Secondary Voltage (kV)"
+        label="Current Rating (A)"
         type="number"
-        value={secondaryVoltage}
-        onChange={(e) => setSecondaryVoltage(Number(e.target.value))}
+        value={currentRating}
+        onChange={(e) => setCurrentRating(Number(e.target.value))}
       />
 
-      {/* Power Rating */}
-      <TextField
-        fullWidth
-        margin="dense"
-        label="Power Rating (MVA)"
-        type="number"
-        value={powerRating}
-        onChange={(e) => setPowerRating(Number(e.target.value))}
-      />
-
-      {/* Phase Count */}
+      {/* Accuracy Class */}
       <FormControl fullWidth margin="dense">
-        <InputLabel>Phase Count</InputLabel>
+        <InputLabel>Accuracy Class</InputLabel>
         <Select
-          value={phaseCount}
-          label="Phase Count"
-          onChange={(e) => setPhaseCount(Number(e.target.value) as 1 | 3)}
+          value={accuracyClass}
+          label="Accuracy Class"
+          onChange={(e) => setAccuracyClass(e.target.value as MeterProperties['accuracyClass'])}
         >
-          {phaseCountOptions.map((phase) => (
-            <MenuItem key={phase} value={phase}>
-              {phase} Phase
+          {accuracyClassOptions.map((accuracy) => (
+            <MenuItem key={accuracy} value={accuracy}>
+              Class {accuracy}
             </MenuItem>
           ))}
         </Select>
       </FormControl>
-
-      {/* Connection Type */}
-      <FormControl fullWidth margin="dense">
-        <InputLabel>Connection Type</InputLabel>
-        <Select
-          value={connectionType}
-          label="Connection Type"
-          onChange={(e) => setConnectionType(e.target.value as TransformerProperties['connectionType'])}
-        >
-          {connectionTypeOptions.map((type) => (
-            <MenuItem key={type} value={type}>
-              {type}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-
-      {/* Impedance */}
-      <TextField
-        fullWidth
-        margin="dense"
-        label="Impedance (%)"
-        type="number"
-        value={impedance}
-        onChange={(e) => setImpedance(Number(e.target.value))}
-      />
 
       {/* Operational Status */}
       <FormControl fullWidth margin="dense">
@@ -343,12 +291,12 @@ function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSav
 
       {/* Loads */}
       <FormControl fullWidth margin="dense">
-        <InputLabel>Loads (Required)</InputLabel>
+        <InputLabel>Loads (Optional)</InputLabel>
         <Select
           multiple
           value={selectedLoads}
           onChange={(e) => handleConnectionChange(e.target.value, false)}
-          input={<OutlinedInput label="Loads (Required)" />}
+          input={<OutlinedInput label="Loads (Optional)" />}
           renderValue={(selected) => (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
               {selected.map((value) => {
@@ -392,4 +340,4 @@ function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSav
   );
 }
 
-export default TransformerEditor;
+export default MeterEditor;

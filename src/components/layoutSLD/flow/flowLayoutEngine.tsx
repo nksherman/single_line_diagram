@@ -9,6 +9,9 @@ import {
 } from '@xyflow/react';
 import type { Node, Edge, NodeTypes, NodeChange } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+
+import Box from '@mui/material/Box';
+
 import ReactFlowEquipmentNode from './flowEquipmentNode';
 import EquipmentBase from '../../../models/equipmentBase';
 
@@ -42,7 +45,16 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
     if (equipment.length === 0) return { nodes: [], edges: [] };
 
 
-    // 
+
+    console.log('=== DEBUGGING LAYOUT GENERATION ===');
+    console.log('Equipment list:', equipment.map(eq => ({
+      id: eq.id,
+      name: eq.name,
+      type: eq.type,
+      loads: Array.from(eq.loads).map(load => ({ id: load.id, name: load.name }))
+    })));
+
+
 
     // Convert EquipmentBase to LayoutNode
     const layoutNodes: LayoutNode[] = equipment.map(eq => ({
@@ -71,6 +83,9 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
         margin,
     });
 
+
+    console.log('Layout result:', layout);
+
     // Convert back to ReactFlow nodes and edges
     const nodes: Node[] = layout.nodes.map(layoutNode => {
       const equipment = EquipmentBase.getById(layoutNode.id);
@@ -94,13 +109,66 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
       id: layoutEdge.id,
       source: layoutEdge.source,
       target: layoutEdge.target,
-      sourceHandle: 'bottom',
-      targetHandle: 'top',
-      type: 'default',
+      sourceHandle: layoutEdge.sourceHandle || 'bottom',
+      targetHandle: layoutEdge.targetHandle || 'top',
+      type: 'step',
       style: { strokeWidth: 2, stroke: '#666' },
     }));
 
+    // Debug logging for edges and connections
+    console.log('=== EDGE CONNECTIONS DEBUG ===');
+    edges.forEach(edge => {
+      const sourceEquipment = EquipmentBase.getById(edge.source);
+      const targetEquipment = EquipmentBase.getById(edge.target);
+      
+      console.log(`Edge: ${edge.id}`);
+      console.log(`  Source: ${sourceEquipment?.name || 'Unknown'} (${edge.source}) - Handle: ${edge.sourceHandle}`);
+      console.log(`  Target: ${targetEquipment?.name || 'Unknown'} (${edge.target}) - Handle: ${edge.targetHandle}`);
+      console.log(`  Connection: ${sourceEquipment?.name || edge.source} -> ${targetEquipment?.name || edge.target}`);
+      console.log('---');
+    });
+
+    // Debug logging for nodes and their handles
+    console.log('=== NODE HANDLES DEBUG ===');
+    nodes.forEach(node => {
+      const equipment = EquipmentBase.getById(node.id);
+      console.log(`Node: ${equipment.name} (${equipment.id}) - Type: ${equipment.type}`);
+      
+      if (equipment.type === 'Bus') {
+        console.log(`  Sources: ${Array.from(equipment.sources || []).map(s => s.name).join(', ')}`);
+        console.log(`  Loads: ${Array.from(equipment.loads || []).map(l => l.name).join(', ')}`);
+        console.log(`  Expected top handles: ${equipment.sources?.size || 0}`);
+        console.log(`  Expected bottom handles: ${equipment.loads?.size || 0}`);
+      } else {
+        console.log(`  Loads: ${Array.from(equipment.loads || []).map(l => l.name).join(', ')}`);
+      }
+      console.log('---');
+    });
+
+    // Summary of connections
+    console.log('=== CONNECTION SUMMARY ===');
+    const connectionMap = new Map<string, string[]>();
+    edges.forEach(edge => {
+      const sourceEquipment = EquipmentBase.getById(edge.source);
+      const targetEquipment = EquipmentBase.getById(edge.target);
+      const sourceName = sourceEquipment?.name || edge.source;
+      const targetName = targetEquipment?.name || edge.target;
+      
+      if (!connectionMap.has(sourceName)) {
+        connectionMap.set(sourceName, []);
+      }
+      connectionMap.get(sourceName)!.push(`${targetName} (${edge.sourceHandle} -> ${edge.targetHandle})`);
+    });
+
+    connectionMap.forEach((targets, source) => {
+      console.log(`${source} connects to:`);
+      targets.forEach(target => console.log(`  -> ${target}`));
+    });
+
+    console.log('=== END DEBUG ===');
+
     return { nodes, edges };
+
   }, [onEditEquipment, vertSpace, nodeSpacing, margin]);
 
   // positionElements with no position
@@ -134,7 +202,7 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
   }, [onNodesChange]);
 
   return (
-    <div style={{ width: '100%', height: '600px' }}>
+    <Box style={{ width: '100%', height: '600px' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -151,7 +219,7 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
         <Controls />
         <Background />
       </ReactFlow>
-    </div>
+    </Box>
   );
 };
 

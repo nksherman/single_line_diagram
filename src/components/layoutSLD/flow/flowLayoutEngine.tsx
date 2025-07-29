@@ -15,7 +15,7 @@ import Box from '@mui/material/Box';
 import ReactFlowEquipmentNode from './flowEquipmentNode';
 import EquipmentBase from '../../../models/equipmentBase';
 
-import { generateFlowLayout, generateDescendingLayout, type LayoutNode } from './flowLayoutAlgorithm';
+import { setUnsetEquipmentPositions, generateEdgesFromItems, type LayoutNode } from './flowLayoutAlgorithm';
 
 /**
  *  This function takes a list of equipment and generates a layout for them.
@@ -40,59 +40,65 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
     equipmentNode: ReactFlowEquipmentNode,
   }), []);
 
-  // Generate initial layout using the extracted algorithm
-  const generateInitialLayout = useCallback((equipment: EquipmentBase[]) => {
-    if (equipment.length === 0) return { nodes: [], edges: [] };
+  // Type size mapping
+  const typeSizeMap: Record<string, { width: number; height: number }> = useMemo(() => ({
+    Generator: { width: 40, height: 40 },
+    Transformer: { width: 60, height: 40 },
+    Bus: { width: 60, height: 4 },
+    Meter: { width: 30, height: 30 },
+    Switchgear: { width: 40, height: 40 },
+    Breaker: { width: 30, height: 30 },
+    Load: { width: 30, height: 30 },
+  }), []);
 
-    // Convert EquipmentBase to LayoutNode
-    const layoutNodes: LayoutNode[] = equipment.map(eq => ({
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+
+  // Update layout when equipment list changes
+  useEffect(() => {
+    // Only set positions for equipment that don't have positions (x:0, y:0)
+    const layoutNodes: LayoutNode[] = equipmentList.map(eq => ({
       id: eq.id,
       type: eq.type as string,
       loads: Array.from(eq.loads).map(load => ({ id: load.id })),
       sources: Array.from(eq.sources).map(source => ({ id: source.id })),
       position: eq.position,
+      name: eq.name, // Optional name for debugging
     }));
 
-    const typeSizeMap: Record<string, { width: number; height: number }> = {
-      Generator: { width: 40, height: 40 },
-      Transformer: { width: 60, height: 40 },
-      Bus: { width: 60, height: 4 },
-      Meter: { width: 30, height: 30 },
-      Switchgear: { width: 40, height: 40 },
-      Breaker: { width: 30, height: 30 },
-      Load: { width: 30, height: 30 },
-    }
+    // Set positions only for unset equipment
+    const updatedLayoutNodes = setUnsetEquipmentPositions(
+      layoutNodes,
+      typeSizeMap,
+      { vertSpace, nodeSpacing, margin }
+    );
 
-    // Generate layout
-    const layout = generateDescendingLayout(
-      layoutNodes, 
-      typeSizeMap, 
-      { vertSpace,
-        nodeSpacing,
-        margin,
+    // Update equipment positions in the model
+    updatedLayoutNodes.forEach(layoutNode => {
+      if (layoutNode.position) {
+        const equipment = equipmentList.find(eq => eq.id === layoutNode.id);
+
+        if (equipment && (!equipment.position || (equipment.position.x === 0 && equipment.position.y === 0))) {
+          equipment.position = layoutNode.position;
+        }
+      }
     });
 
-    // Convert back to ReactFlow nodes and edges
-    const nodes: Node[] = layout.nodes.map(layoutNode => {
-      const equipment = EquipmentBase.getById(layoutNode.id);
-      if (!equipment) return null;
 
-      // Update equipment position
-      equipment.position = layoutNode.position;
+    // Generate ReactFlow nodes and edges for all equipment
+    const nodes: Node[] = equipmentList.map(equipment => ({
+      id: equipment.id,
+      type: 'equipmentNode',
+      position: equipment.position || { x: 0, y: 0 },
+      data: {
+        equipment,
+        onEdit: onEditEquipment,
+      },
+    }));
 
-
-      return {
-        id: layoutNode.id,
-        type: 'equipmentNode',
-        position: layoutNode.position,
-        data: {
-          equipment,
-          onEdit: onEditEquipment,
-        },
-      };
-    }).filter(Boolean) as Node[];
-
-    const edges: Edge[] = layout.edges.map(layoutEdge => ({
+    // Generate edges
+    const layoutEdges = generateEdgesFromItems(layoutNodes);
+    const edges: Edge[] = layoutEdges.map(layoutEdge => ({
       id: layoutEdge.id,
       source: layoutEdge.source,
       target: layoutEdge.target,
@@ -102,42 +108,25 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
       style: { strokeWidth: 2, stroke: '#666' },
     }));
 
+    setNodes(nodes);
+    setEdges(edges);
 
-    return { nodes, edges };
-
-  }, [onEditEquipment, vertSpace, nodeSpacing, margin]);
-
-  // positionElements with no position
-  const initialLayout = useMemo(() => 
-    generateInitialLayout(equipmentList), 
-    [equipmentList, generateInitialLayout]
-  );
-
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialLayout.nodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialLayout.edges);
-
-  // Update layout when equipment list changes
-  useEffect(() => {
-    // With memo, it does not update the node equipment position links
-    const newLayout = generateInitialLayout(equipmentList);
-    setNodes(newLayout.nodes);
-    setEdges(newLayout.edges);
-
-  }, [equipmentList, generateInitialLayout, setNodes, setEdges]);
+  }, [equipmentList, onEditEquipment, vertSpace, nodeSpacing, margin, typeSizeMap, setNodes, setEdges]);
 
   // Handle node position changes to update equipment positions
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
     changes.forEach(change => {
       if (change.type === 'position' && change.position && change.dragging === false) {
         // Update equipment position when node is moved
-        const equipment = EquipmentBase.getById(change.id);
+        const equipment = equipmentList.find(eq => eq.id === change.id);
         if (equipment) {
           equipment.position = change.position;
         }
       }
     });
     onNodesChange(changes);
-  }, [onNodesChange]);
+
+  }, [onNodesChange, equipmentList]);
 
   return (
     <Box style={{ width: '100%', height: '600px' }}>

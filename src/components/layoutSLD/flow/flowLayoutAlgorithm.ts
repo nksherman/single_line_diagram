@@ -16,6 +16,7 @@ export interface LayoutNode {
   loads: { id: string }[];
   sources: { id: string }[];
   position?: { x: number; y: number };
+  name?: string;
 }
 
 export interface LayoutOptions {
@@ -254,7 +255,6 @@ export function generateEdgesFromItems(items: LayoutNode[]): Array<{
   return edges;
 }
 
-// Main layout function - now much simpler
 export function generateFlowLayout(
   items: LayoutNode[],
   typeSizeMap: Record<string, { width: number; height: number }>,
@@ -312,9 +312,7 @@ function getOpenSpace(
   let overlap = true;
   while (overlap) {
     overlap = false;
-    for (const [id, pos] of arrangedSpace.entries()) {
-      if (id === '0') continue; // Skip the initial node
-
+    for (const [_, pos] of arrangedSpace.entries()) {
       if (pos.x < x + thisSize.width &&
           pos.x + pos.width > x &&
           pos.y < y + thisSize.height &&
@@ -329,6 +327,58 @@ function getOpenSpace(
   
   // Return the final non-overlapping position
   return { x, y };
+}
+
+function createArrangedSpace(
+  items: LayoutNode[],
+  typeSizeMap: Record<string, { width: number; height: number }>,
+  options: LayoutOptions = {},
+): Map<string, PositionedNode> {
+  const {
+    vertSpace = 150,
+    nodeSpacing = 120,  
+    margin = 50,
+  } = options;
+
+  // Each node id with position + height + width
+  const arrangedSpace: Map<string, PositionedNode> = new Map();
+
+  // Any nodes that have a position set (not equal to {0:0})
+  const hardSetNodes = items.filter(item => 
+    item.position && item.position.x !== 0 && item.position.y !== 0
+  );
+
+  // Set each hardSetNode position
+  hardSetNodes.forEach(point => {
+    const size = getEquimentSize(point.type, typeSizeMap);
+
+    // hardSetNodes have a defined position, so we can use it directly
+    const posNode: PositionedNode = {
+      x: point.position!.x,
+      y: point.position!.y,
+      height: size.height,
+      width: size.width,
+      hardSet: true,
+    };
+
+    arrangedSpace.set(point.id, posNode);
+  });
+
+  // If no hardSetNodes, set the first node to the margin position
+  if (hardSetNodes.length === 0 && items.length > 0) {
+    const firstNode = items[0];
+    const size = getEquimentSize(firstNode.type, typeSizeMap);
+    const posNode: PositionedNode = {
+      x: margin,
+      y: margin,
+      height: size.height,
+      width: size.width,
+      hardSet: false,
+    };
+    arrangedSpace.set(firstNode.id, posNode);
+  }
+
+  return arrangedSpace;
 }
 
 
@@ -425,65 +475,18 @@ function setParentAboveChild(
   return setNodes;
 }
 
+
 export function generateDescendingLayout(
   items: LayoutNode[],
+  arrangedSpace: Map<string, PositionedNode>,
   typeSizeMap: Record<string, { width: number; height: number }>,
   options: LayoutOptions = {},
 ): LayoutResult {
-  /**
-   * Position children relatively below parent, equally spaced
-   * 
-   * If any children already placed, set parent relative to parent
-   * 
-   * If child already placed, set all relative to it
-   * If child place is set, set parent + children relative to it
-   * If multiple children set, panic 
-   */
-
-  // Parse options
   const {
     vertSpace = 150,
     nodeSpacing = 120,
     margin = 50,
   } = options;
-
-  // Each node id with position + height + width
-  const arrangedSpace: Map<string, PositionedNode> = new Map();
-
-  // Any nodes that have a position set (not equal to {0:0})
-  const hardSetNodes = items.filter(item => 
-    item.position && item.position.x !== 0 && item.position.y !== 0
-  );
-
-  // Set each hardSetNode position
-  hardSetNodes.forEach(point => {
-    const size = getEquimentSize(point.type, typeSizeMap);
-
-    // hardSetNodes have a defined position, so we can use it directly
-    const posNode: PositionedNode = {
-      x: point.position!.x,
-      y: point.position!.y,
-      height: size.height,
-      width: size.width,
-      hardSet: true,
-    };
-
-    arrangedSpace.set(point.id, posNode);
-  });
-
-  // If no hardSetNodes, set the first node to the margin position
-  if (hardSetNodes.length === 0 && items.length > 0) {
-    const firstNode = items[0];
-    const size = getEquimentSize(firstNode.type, typeSizeMap);
-    const posNode: PositionedNode = {
-      x: margin,
-      y: margin,
-      height: size.height,
-      width: size.width,
-      hardSet: false,
-    };
-    arrangedSpace.set(firstNode.id, posNode);
-  }
 
   let unvisitedNodes = items.filter(item => !arrangedSpace.has(item.id));
   let iterationCount = 0;
@@ -494,31 +497,60 @@ export function generateDescendingLayout(
     iterationCount++;
     let nodesPlacedThisIteration = 0;
 
-    // Find nodes that can be placed based on arranged nodes
     unvisitedNodes.forEach(node => {
-      // Check if this node has loads (children) that are already arranged
       const arrangedChildren = node.loads.filter(load => arrangedSpace.has(load.id));
       if (arrangedChildren.length > 0) {
-        // Place this unvisited node above its first (highest) arranged child
-        const childNode = items.find(item => item.id === arrangedChildren[0].id);
-        if (childNode) {
-          setParentAboveChild(childNode, node, arrangedSpace, typeSizeMap, options);
+
+        // get the right most child for the anchor
+        let maxChildX = -Infinity;
+        let rightmostChildId = arrangedChildren[0].id; // fallback to first child
+
+        arrangedChildren.forEach(load => {
+          const childPos = arrangedSpace.get(load.id);
+          if (childPos) {
+            const childRightX = childPos.x + childPos.width;
+            if (childRightX > maxChildX) {
+              maxChildX = childRightX;
+              rightmostChildId = load.id;
+            }
+          }
+        });
+
+        const childAnchor = items.find(item => item.id === rightmostChildId);
+
+        if (childAnchor) {
+          setParentAboveChild(childAnchor, node, arrangedSpace, typeSizeMap, options);
           nodesPlacedThisIteration++;
         }
       } else {
-        // Check if this node has sources (parents) that are already arranged
-        const arrangedParents = items.filter(item => 
-          item.loads.some(load => load.id === node.id) && arrangedSpace.has(item.id)
-        );
+        const arrangedParents = node.sources.filter(source => arrangedSpace.has(source.id));
+
         if (arrangedParents.length > 0) {
-          // Place this node below its first arranged parent
-          setChildBelowParent(arrangedParents[0], node, arrangedSpace, typeSizeMap, options);
-          nodesPlacedThisIteration++;
+
+          let maxParentX = -Infinity;
+          let rightmostParentId = arrangedParents[0].id; // fallback to first parent
+
+          arrangedParents.forEach(parent => {
+            const parentPos = arrangedSpace.get(parent.id);
+            if (parentPos) {
+              const parentRightX = parentPos.x + parentPos.width;
+              if (parentRightX > maxParentX) {
+                maxParentX = parentRightX;
+                rightmostParentId = parent.id;
+              }
+            }
+          });
+
+          const parentAnchor = items.find(item => item.id === rightmostParentId);
+
+          if (parentAnchor) {
+            setChildBelowParent(parentAnchor, node, arrangedSpace, typeSizeMap, options);
+            nodesPlacedThisIteration++;
+          }
         }
       }
     });
 
-    // Update unvisited nodes
     unvisitedNodes = items.filter(item => !arrangedSpace.has(item.id));
 
     // If no nodes were placed this iteration, break to prevent infinite loop
@@ -527,12 +559,14 @@ export function generateDescendingLayout(
     }
   }
 
-  // Handle any remaining unvisited nodes by placing them in a simple layout
+  // Handle any remaining unvisited nodes at the bottom
+  const topPosY = Math.min(...Array.from(arrangedSpace.values()).map(pos => pos.y)) - vertSpace;
+  const topPosX = Math.min(...Array.from(arrangedSpace.values()).map(pos => pos.x));
   unvisitedNodes.forEach((node, index) => {
     const size = getEquimentSize(node.type, typeSizeMap);
     const posNode: PositionedNode = {
-      x: margin + (index * (size.width + nodeSpacing)),
-      y: margin + vertSpace * 3, // Place them below other nodes
+      x: topPosX + (index * (size.width + nodeSpacing)),
+      y: topPosY, 
       height: size.height,
       width: size.width,
       hardSet: false,
@@ -540,14 +574,44 @@ export function generateDescendingLayout(
     arrangedSpace.set(node.id, posNode);
   });
 
-  // Convert arranged space to the expected format
   const nodes: LayoutResult['nodes'] = Array.from(arrangedSpace.entries()).map(([id, pos]) => ({
     id,
     position: { x: pos.x, y: pos.y }
   }));
 
-  // Create edges from parent to children
   const edges = generateEdgesFromItems(items);
 
   return { nodes, edges };
+}
+
+/**
+ * Sets positions only for equipment that don't have positions set (x:0, y:0)
+ * This is more efficient than re-running the entire layout algorithm
+ */
+export function setUnsetEquipmentPositions(
+  items: LayoutNode[],
+  typeSizeMap: Record<string, { width: number; height: number }>,
+  options: LayoutOptions = {},
+): LayoutNode[] {
+  const unsetItems = items.filter(item => 
+    !item.position || (item.position.x === 0 && item.position.y === 0)
+  );
+
+  // If no items need positioning, return original items
+  if (unsetItems.length === 0) {
+    return items;
+  }
+
+  const arrangedSpace = createArrangedSpace(items, typeSizeMap, options);
+  const layout = generateDescendingLayout(items, arrangedSpace, typeSizeMap, options);
+  const positionMap = new Map(layout.nodes.map(node => [node.id, node.position]));
+
+  // Return updated items with new positions
+  return items.map(item => {
+    const newPosition = positionMap.get(item.id);
+    if (newPosition) {
+      return { ...item, position: newPosition };
+    }
+    return item;
+  });
 }

@@ -61,7 +61,7 @@ class Generator extends EquipmentBase {
     voltage: {
       type: 'number',
       label: 'Voltage (kV)',
-      defaultValue: 13.8,
+      defaultValue: 11,
       validation: (value: number) => {
         if (value <= 0) {
           return 'Voltage must be a positive number';

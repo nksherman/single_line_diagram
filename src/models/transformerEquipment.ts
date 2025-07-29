@@ -59,7 +59,7 @@ class Transformer extends EquipmentBase {
     primaryVoltage: {
       type: 'number',
       label: 'Primary Voltage (kV)',
-      defaultValue: 13.8,
+      defaultValue: 11,
       validation: (value: number) => {
         if (value <= 0) {
           return 'Primary voltage must be a positive number';

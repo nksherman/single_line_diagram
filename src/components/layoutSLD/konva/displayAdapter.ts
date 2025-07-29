@@ -1,9 +1,9 @@
-import { EquipmentBase } from '../../models/equipmentBase';
+import EquipmentBase from '../../../models/equipmentBase';
 
-import Generator from '../../models/generatorEquipment';
-import Transformer from '../../models/transformerEquipment';
-import Bus from '../../models/busEquipment';
-import Meter from '../../models/meterEquipment';
+import Generator from '../../../models/generatorEquipment';
+import Transformer from '../../../models/transformerEquipment';
+import Bus from '../../../models/busEquipment';
+import Meter from '../../../models/meterEquipment';
 
 export interface TextElement {
   id: string;
@@ -218,7 +218,7 @@ class EquipmentDisplayAdapter {
   static toDisplayConnections(equipment: EquipmentBase[]): DisplayConnection[] {
     const connections: DisplayConnection[] = [];
     equipment.forEach(eq => {
-      eq.loads.forEach(load => {
+      eq.loads.forEach((load: EquipmentBase) => {
         connections.push({
           id: `${eq.id}-${load.id}`,
           sourceId: eq.id,

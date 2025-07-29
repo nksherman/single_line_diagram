@@ -1,7 +1,5 @@
-import { useState, useEffect }  from 'react';
 import type { ReactNode } from 'react'
-import { Stage, Layer, Line } from 'react-konva';
-import { Box, Popover } from '@mui/material';
+import { Box } from '@mui/material';
 
 import { EquipmentBase } from '../models/equipmentBase';
 

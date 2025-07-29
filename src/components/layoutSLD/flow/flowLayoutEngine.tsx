@@ -15,7 +15,7 @@ import Box from '@mui/material/Box';
 import ReactFlowEquipmentNode from './flowEquipmentNode';
 import EquipmentBase from '../../../models/equipmentBase';
 
-import { generateFlowLayout, type LayoutNode } from './flowLayoutAlgorithm';
+import { generateFlowLayout, generateDescendingLayout, type LayoutNode } from './flowLayoutAlgorithm';
 
 /**
  *  This function takes a list of equipment and generates a layout for them.
@@ -64,7 +64,7 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
     }
 
     // Generate layout
-    const layout = generateFlowLayout(
+    const layout = generateDescendingLayout(
       layoutNodes, 
       typeSizeMap, 
       { vertSpace,
@@ -79,6 +79,7 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
 
       // Update equipment position
       equipment.position = layoutNode.position;
+
 
       return {
         id: layoutNode.id,
@@ -101,6 +102,7 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
       style: { strokeWidth: 2, stroke: '#666' },
     }));
 
+
     return { nodes, edges };
 
   }, [onEditEquipment, vertSpace, nodeSpacing, margin]);
@@ -116,9 +118,11 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
 
   // Update layout when equipment list changes
   useEffect(() => {
+    // With memo, it does not update the node equipment position links
     const newLayout = generateInitialLayout(equipmentList);
     setNodes(newLayout.nodes);
     setEdges(newLayout.edges);
+
   }, [equipmentList, generateInitialLayout, setNodes, setEdges]);
 
   // Handle node position changes to update equipment positions

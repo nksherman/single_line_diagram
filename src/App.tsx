@@ -16,6 +16,7 @@ import EquipmentCreator from './components/equipmentCreator'
 import { EquipmentBase } from './models/equipmentBase'
 import Generator from './models/generatorEquipment'
 import Transformer from './models/transformerEquipment'
+import Meter from './models/meterEquipment'
 import Bus from './models/busEquipment';
 
 import patchNotesText from '/patchHistory.txt?raw' 
@@ -31,12 +32,20 @@ function defaultEquipment(): EquipmentBase[] {
     efficiency: 95,
     isOnline: true
   });
-  
-  const bus1 = new Bus('2', 'Bus 1', {
+  const generator2 = new Generator('3', 'Generator 2', {
+    capacity: 200,
     voltage: 11,
+    fuelType: 'natural_gas',
+    efficiency: 85,
+    isOnline: false
+  });
+  
+  const bus1 = new Bus('4', 'Bus 1', {
+    voltage: 11,
+    allowedSources: 2,
   });
 
-  const tx1 = new Transformer('3', 'Transformer 1', {
+  const tx1 = new Transformer('5', 'Transformer 1', {
     primaryVoltage: 11,
     secondaryVoltage: 4.16,
     powerRating: 15,
@@ -46,7 +55,7 @@ function defaultEquipment(): EquipmentBase[] {
     isOperational: true
   });
 
-  const tx2 = new Transformer('4', 'Transformer 2', {
+  const tx2 = new Transformer('6', 'Transformer 2', {
     primaryVoltage: 11,
     secondaryVoltage: 4.16,
     powerRating: 15,
@@ -56,14 +65,28 @@ function defaultEquipment(): EquipmentBase[] {
     isOperational: true
   });
 
+  const meter1 = new Meter('7', 'Meter 1', {
+    voltageRating: 4.16,
+    currentRating: 100,
+    accuracyClass: '0.5',
+    isOperational: true,
+  });
 
-  // Connect generators
+  const meter2 = new Meter('8', 'Meter 2', {
+    voltageRating: 4.16,
+    currentRating: 50,
+    accuracyClass: '0.5',
+    isOperational: true,
+  });
 
   EquipmentBase.connectById(generator1.id, bus1.id);
+  EquipmentBase.connectById(generator2.id, bus1.id);
   EquipmentBase.connectById(bus1.id, tx1.id);
   EquipmentBase.connectById(bus1.id, tx2.id);
+  EquipmentBase.connectById(tx1.id, meter1.id);
+  EquipmentBase.connectById(tx2.id, meter2.id);
 
-  return [generator1, bus1, tx1, tx2];
+  return [generator1, generator2, bus1, tx1, tx2, meter1, meter2];
 }
 
 const versionNumber = extractVersionNumber(patchNotesText);

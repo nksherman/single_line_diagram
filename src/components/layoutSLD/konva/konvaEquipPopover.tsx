@@ -2,7 +2,7 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 
-import EquipmentBase from '../../models/equipmentBase';
+import EquipmentBase from '../../../models/equipmentBase';
 
 
 function KonvaEquipInfo({equipment, onEdit}: { equipment: EquipmentBase, onEdit: (equipment: EquipmentBase) => void }) {

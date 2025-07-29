@@ -1,3 +1,23 @@
+/**
+ * Flow Layout Algorithm for Single Line Diagrams
+ * 
+ * This module provides functions for automatically positioning equipment nodes
+ * in a single line diagram. The main algorithm places nodes based on their
+ * electrical connections (sources and loads), avoiding overlaps and creating
+ * a visually clear layout.
+ * 
+ * Key Features:
+ * - Respects pre-positioned nodes (hard-set positions)
+ * - Places parents above children, children below parents
+ * - Uses rightmost anchor strategy for better visual flow
+ * - Handles unconnected nodes with fallback positioning
+ * - Collision detection and avoidance
+ */
+
+// ==============================================================================
+// TYPES AND INTERFACES
+// ==============================================================================
+
 interface Position {
   x: number
   y: number
@@ -45,9 +65,17 @@ export interface DependencyGraph {
   inDegree: Map<string, number>;
 }
 
-function getEquimentSize(type: string, typeSizeMap: Record<string, { width: number; height: number }>): { width: number; height: number } {
+// ==============================================================================
+// UTILITY FUNCTIONS
+// ==============================================================================
+
+function getEquipmentSize(type: string, typeSizeMap: Record<string, { width: number; height: number }>): { width: number; height: number } {
   return typeSizeMap[type] || { width: 40, height: 40 };
 }
+
+// ==============================================================================
+// GRAPH AND EDGE GENERATION
+// ==============================================================================
 
 // Core graph building functions
 export function buildDependencyGraph(items: LayoutNode[]): DependencyGraph {
@@ -71,128 +99,6 @@ export function buildDependencyGraph(items: LayoutNode[]): DependencyGraph {
   return { graph, inDegree };
 }
 
-// Topological sorting functions
-export function findSourceNodes(items: LayoutNode[], inDegree: Map<string, number>): string[] {
-  const sources = items
-    .filter(item => inDegree.get(item.id) === 0)
-    .map(item => item.id);
-  
-  // Fallback: if no sources found, pick the first node
-  if (sources.length === 0 && items.length > 0) {
-    sources.push(items[0].id);
-  }
-  
-  return sources;
-}
-
-export function performTopologicalSort(
-  graph: Map<string, Set<string>>,
-  inDegree: Map<string, number>,
-  sourceNodes: string[]
-): string[][] {
-  const levels: string[][] = [];
-  const queue: string[] = [...sourceNodes];
-  const visited = new Set<string>();
-
-  while (queue.length > 0) {
-    const currentLevel: string[] = [];
-    const nextQueue: string[] = [];
-    
-    while (queue.length > 0) {
-      const nodeId = queue.shift()!;
-      if (visited.has(nodeId)) continue;
-      
-      currentLevel.push(nodeId);
-      visited.add(nodeId);
-      
-      // Reduce in-degree for all loads and add to next level if ready
-      const loads = graph.get(nodeId) || new Set();
-      loads.forEach(loadId => {
-        const newInDegree = (inDegree.get(loadId) || 0) - 1;
-        inDegree.set(loadId, newInDegree);
-        
-        if (newInDegree === 0 && !visited.has(loadId)) {
-          nextQueue.push(loadId);
-        }
-      });
-    }
-    
-    if (currentLevel.length > 0) {
-      levels.push(currentLevel);
-    }
-    
-    queue.push(...nextQueue);
-  }
-
-  return levels;
-}
-
-export function handleUnvisitedNodes(items: LayoutNode[], visited: Set<string>): string[][] {
-  const unvisitedLevels: string[][] = [];
-  
-  items.forEach(item => {
-    if (!visited.has(item.id)) {
-      unvisitedLevels.push([item.id]);
-    }
-  });
-  
-  return unvisitedLevels;
-}
-
-// Position calculation functions
-export function calculateLevelWidth(
-  level: string[],
-  itemMap: Map<string, LayoutNode>,
-  typeSizeMap: Record<string, { width: number; height: number }>
-): number {
-  let totalWidth = 0;
-  
-  level.forEach(itemId => {
-    const item = itemMap.get(itemId);
-    if (item) {
-      const size = typeSizeMap[item.type] || { width: 40, height: 40 };
-      totalWidth += Math.max(size.width + 32, 120); // Add padding + minimum width
-    } else {
-      totalWidth += 120; // fallback width
-    }
-  });
-  
-  return totalWidth;
-}
-
-export function positionNodesInLevel(
-  level: string[],
-  levelIndex: number,
-  itemMap: Map<string, LayoutNode>,
-  typeSizeMap: Record<string, { width: number; height: number }>,
-  options: Required<Pick<LayoutOptions, 'vertSpace' | 'margin' | 'containerWidth'>>
-): Array<{ id: string; position: { x: number; y: number } }> {
-  const { vertSpace, margin, containerWidth } = options;
-  const y = margin + levelIndex * vertSpace;
-  
-  const totalWidth = calculateLevelWidth(level, itemMap, typeSizeMap);
-  const startX = Math.max(margin, (containerWidth - totalWidth) / 2);
-  let currentX = startX;
-  
-  const positions: Array<{ id: string; position: { x: number; y: number } }> = [];
-  
-  level.forEach((itemId) => {
-    const item = itemMap.get(itemId);
-    if (!item) return;
-    
-    const size = typeSizeMap[item.type] || { width: 40, height: 40 };
-    const nodeWidth = Math.max(size.width + 32, 120);
-    const x = currentX + nodeWidth / 2;
-    currentX += nodeWidth + 20; // Add some spacing between nodes
-    
-    positions.push({
-      id: itemId,
-      position: { x, y },
-    });
-  });
-  
-  return positions;
-}
 
 export function generateEdgesFromItems(items: LayoutNode[]): Array<{
   id: string;
@@ -255,52 +161,13 @@ export function generateEdgesFromItems(items: LayoutNode[]): Array<{
   return edges;
 }
 
-export function generateFlowLayout(
-  items: LayoutNode[],
-  typeSizeMap: Record<string, { width: number; height: number }>,
-  options: LayoutOptions = {},
-): LayoutResult {
-  const {
-    vertSpace = 150,
-    nodeSpacing = 120,
-    margin = 50,
-    containerWidth = typeof window !== 'undefined' ? window.innerWidth : 1200
-  } = options;
+// ==============================================================================
+// COLLISION DETECTION AND SPACE MANAGEMENT
+// ==============================================================================
 
-  if (items.length === 0) return { nodes: [], edges: [] };
-
-  // Build dependency graph
-  const { graph, inDegree } = buildDependencyGraph(items);
-  
-  // Find source nodes and perform topological sort
-  const sourceNodes = findSourceNodes(items, inDegree);
-  const levels = performTopologicalSort(graph, inDegree, sourceNodes);
-  
-  // Handle any unvisited nodes (cycles)
-  const visited = new Set(levels.flat());
-  const unvisitedLevels = handleUnvisitedNodes(items, visited);
-  const allLevels = [...levels, ...unvisitedLevels];
-
-  // Generate node positions
-  const itemMap = new Map(items.map(item => [item.id, item]));
-  const nodes: LayoutResult['nodes'] = [];
-  
-  allLevels.forEach((level, levelIndex) => {
-    const levelPositions = positionNodesInLevel(
-      level,
-      levelIndex,
-      itemMap,
-      typeSizeMap,
-      { vertSpace, margin, containerWidth }
-    );
-    nodes.push(...levelPositions);
-  });
-  // Generate edges
-  const edges = generateEdgesFromItems(items);
-
-  return { nodes, edges };
-}
-
+/**
+ * Finds an open space for a node, avoiding overlaps with existing nodes
+ */
 function getOpenSpace(
   x: number,
   y: number,
@@ -329,16 +196,16 @@ function getOpenSpace(
   return { x, y };
 }
 
+/**
+ * Creates the initial arranged space with hard-set node positions
+ * and optionally places the first node if no hard-set nodes exist
+ */
 function createArrangedSpace(
   items: LayoutNode[],
   typeSizeMap: Record<string, { width: number; height: number }>,
   options: LayoutOptions = {},
 ): Map<string, PositionedNode> {
-  const {
-    vertSpace = 150,
-    nodeSpacing = 120,  
-    margin = 50,
-  } = options;
+  const { margin = 50 } = options;
 
   // Each node id with position + height + width
   const arrangedSpace: Map<string, PositionedNode> = new Map();
@@ -350,7 +217,7 @@ function createArrangedSpace(
 
   // Set each hardSetNode position
   hardSetNodes.forEach(point => {
-    const size = getEquimentSize(point.type, typeSizeMap);
+    const size = getEquipmentSize(point.type, typeSizeMap);
 
     // hardSetNodes have a defined position, so we can use it directly
     const posNode: PositionedNode = {
@@ -367,7 +234,7 @@ function createArrangedSpace(
   // If no hardSetNodes, set the first node to the margin position
   if (hardSetNodes.length === 0 && items.length > 0) {
     const firstNode = items[0];
-    const size = getEquimentSize(firstNode.type, typeSizeMap);
+    const size = getEquipmentSize(firstNode.type, typeSizeMap);
     const posNode: PositionedNode = {
       x: margin,
       y: margin,
@@ -381,7 +248,13 @@ function createArrangedSpace(
   return arrangedSpace;
 }
 
+// ==============================================================================
+// NODE POSITIONING FUNCTIONS
+// ==============================================================================
 
+/**
+ * Places a child node below its parent
+ */
 function setChildBelowParent(
   parentAnchor: LayoutNode,
   child: LayoutNode,
@@ -406,7 +279,7 @@ function setChildBelowParent(
 
   // Calculate the position for the child below the parent
   const yOffset = parentPosition.y + parentPosition.height + vertSpace;
-  const size = getEquimentSize(child.type, typeSizeMap);
+  const size = getEquipmentSize(child.type, typeSizeMap);
 
   const foundPos = getOpenSpace(
     parentPosition.x, // Start directly below parent
@@ -428,6 +301,9 @@ function setChildBelowParent(
   return setNodes;
 }
 
+/**
+ * Places a parent node above its child
+ */
 function setParentAboveChild(
   childAnchor: LayoutNode,
   parent: LayoutNode,
@@ -450,7 +326,7 @@ function setParentAboveChild(
     return setNodes;
   }
 
-  const size = getEquimentSize(parent.type, typeSizeMap);
+  const size = getEquipmentSize(parent.type, typeSizeMap);
   
   // Calculate the position for the parent above the child
   const yOffset = childPosition.y - vertSpace - size.height;
@@ -475,95 +351,115 @@ function setParentAboveChild(
   return setNodes;
 }
 
+// ==============================================================================
+// LAYOUT ALGORITHM HELPERS
+// ==============================================================================
 
-export function generateDescendingLayout(
+/**
+ * Finds the rightmost child from arranged children
+ */
+function findRightmostChild(
+  arrangedChildren: { id: string }[],
+  arrangedSpace: Map<string, PositionedNode>
+): string {
+  let maxChildX = -Infinity;
+  let rightmostChildId = arrangedChildren[0].id; // fallback to first child
+
+  arrangedChildren.forEach(load => {
+    const childPos = arrangedSpace.get(load.id);
+    if (childPos) {
+      const childRightX = childPos.x + childPos.width;
+      if (childRightX > maxChildX) {
+        maxChildX = childRightX;
+        rightmostChildId = load.id;
+      }
+    }
+  });
+
+  return rightmostChildId;
+}
+
+/**
+ * Finds the rightmost parent from arranged parents
+ */
+function findRightmostParent(
+  arrangedParents: { id: string }[],
+  arrangedSpace: Map<string, PositionedNode>
+): string {
+  let maxParentX = -Infinity;
+  let rightmostParentId = arrangedParents[0].id; // fallback to first parent
+
+  arrangedParents.forEach(parent => {
+    const parentPos = arrangedSpace.get(parent.id);
+    if (parentPos) {
+      const parentRightX = parentPos.x + parentPos.width;
+      if (parentRightX > maxParentX) {
+        maxParentX = parentRightX;
+        rightmostParentId = parent.id;
+      }
+    }
+  });
+
+  return rightmostParentId;
+}
+
+/**
+ * Attempts to place a single unvisited node based on its arranged connections
+ */
+function tryPlaceNode(
+  node: LayoutNode,
   items: LayoutNode[],
   arrangedSpace: Map<string, PositionedNode>,
   typeSizeMap: Record<string, { width: number; height: number }>,
-  options: LayoutOptions = {},
-): LayoutResult {
-  const {
-    vertSpace = 150,
-    nodeSpacing = 120,
-    margin = 50,
-  } = options;
-
-  let unvisitedNodes = items.filter(item => !arrangedSpace.has(item.id));
-  let iterationCount = 0;
-  const maxIterations = items.length * 2; // Prevent infinite loops
-
-  // Recursively find nodes adjacent to arranged nodes and position them
-  while (unvisitedNodes.length > 0 && iterationCount < maxIterations) {
-    iterationCount++;
-    let nodesPlacedThisIteration = 0;
-
-    unvisitedNodes.forEach(node => {
-      const arrangedChildren = node.loads.filter(load => arrangedSpace.has(load.id));
-      if (arrangedChildren.length > 0) {
-
-        // get the right most child for the anchor
-        let maxChildX = -Infinity;
-        let rightmostChildId = arrangedChildren[0].id; // fallback to first child
-
-        arrangedChildren.forEach(load => {
-          const childPos = arrangedSpace.get(load.id);
-          if (childPos) {
-            const childRightX = childPos.x + childPos.width;
-            if (childRightX > maxChildX) {
-              maxChildX = childRightX;
-              rightmostChildId = load.id;
-            }
-          }
-        });
-
-        const childAnchor = items.find(item => item.id === rightmostChildId);
-
-        if (childAnchor) {
-          setParentAboveChild(childAnchor, node, arrangedSpace, typeSizeMap, options);
-          nodesPlacedThisIteration++;
-        }
-      } else {
-        const arrangedParents = node.sources.filter(source => arrangedSpace.has(source.id));
-
-        if (arrangedParents.length > 0) {
-
-          let maxParentX = -Infinity;
-          let rightmostParentId = arrangedParents[0].id; // fallback to first parent
-
-          arrangedParents.forEach(parent => {
-            const parentPos = arrangedSpace.get(parent.id);
-            if (parentPos) {
-              const parentRightX = parentPos.x + parentPos.width;
-              if (parentRightX > maxParentX) {
-                maxParentX = parentRightX;
-                rightmostParentId = parent.id;
-              }
-            }
-          });
-
-          const parentAnchor = items.find(item => item.id === rightmostParentId);
-
-          if (parentAnchor) {
-            setChildBelowParent(parentAnchor, node, arrangedSpace, typeSizeMap, options);
-            nodesPlacedThisIteration++;
-          }
-        }
-      }
-    });
-
-    unvisitedNodes = items.filter(item => !arrangedSpace.has(item.id));
-
-    // If no nodes were placed this iteration, break to prevent infinite loop
-    if (nodesPlacedThisIteration === 0) {
-      break;
+  options: LayoutOptions
+): boolean {
+  // Try to place based on arranged children (loads)
+  const arrangedChildren = node.loads.filter(load => arrangedSpace.has(load.id));
+  if (arrangedChildren.length > 0) {
+    const rightmostChildId = findRightmostChild(arrangedChildren, arrangedSpace);
+    const childAnchor = items.find(item => item.id === rightmostChildId);
+    
+    if (childAnchor) {
+      setParentAboveChild(childAnchor, node, arrangedSpace, typeSizeMap, options);
+      return true;
     }
   }
 
-  // Handle any remaining unvisited nodes at the bottom
+  // Try to place based on arranged parents (sources)
+  const arrangedParents = node.sources.filter(source => arrangedSpace.has(source.id));
+  if (arrangedParents.length > 0) {
+    const rightmostParentId = findRightmostParent(arrangedParents, arrangedSpace);
+    const parentAnchor = items.find(item => item.id === rightmostParentId);
+    
+    if (parentAnchor) {
+      setChildBelowParent(parentAnchor, node, arrangedSpace, typeSizeMap, options);
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Places any remaining unvisited nodes in a fallback layout
+ */
+function placeRemainingNodes(
+  unvisitedNodes: LayoutNode[],
+  arrangedSpace: Map<string, PositionedNode>,
+  typeSizeMap: Record<string, { width: number; height: number }>,
+  options: LayoutOptions
+): void {
+  const { vertSpace = 150, nodeSpacing = 120 } = options;
+  
+  if (unvisitedNodes.length === 0 || arrangedSpace.size === 0) {
+    return;
+  }
+
   const topPosY = Math.min(...Array.from(arrangedSpace.values()).map(pos => pos.y)) - vertSpace;
   const topPosX = Math.min(...Array.from(arrangedSpace.values()).map(pos => pos.x));
+  
   unvisitedNodes.forEach((node, index) => {
-    const size = getEquimentSize(node.type, typeSizeMap);
+    const size = getEquipmentSize(node.type, typeSizeMap);
     const posNode: PositionedNode = {
       x: topPosX + (index * (size.width + nodeSpacing)),
       y: topPosY, 
@@ -573,7 +469,47 @@ export function generateDescendingLayout(
     };
     arrangedSpace.set(node.id, posNode);
   });
+}
 
+// ==============================================================================
+// MAIN LAYOUT FUNCTIONS
+// ==============================================================================
+
+export function generateDescendingLayout(
+  items: LayoutNode[],
+  arrangedSpace: Map<string, PositionedNode>,
+  typeSizeMap: Record<string, { width: number; height: number }>,
+  options: LayoutOptions = {},
+): LayoutResult {
+  let unvisitedNodes = items.filter(item => !arrangedSpace.has(item.id));
+  let iterationCount = 0;
+  const maxIterations = items.length * 2; // Prevent infinite loops
+
+  // Recursively find nodes adjacent to arranged nodes and position them
+  while (unvisitedNodes.length > 0 && iterationCount < maxIterations) {
+    iterationCount++;
+    let nodesPlacedThisIteration = 0;
+
+    // Try to place each unvisited node
+    unvisitedNodes.forEach(node => {
+      if (tryPlaceNode(node, items, arrangedSpace, typeSizeMap, options)) {
+        nodesPlacedThisIteration++;
+      }
+    });
+
+    // Update list of unvisited nodes
+    unvisitedNodes = items.filter(item => !arrangedSpace.has(item.id));
+
+    // If no nodes were placed this iteration, break to prevent infinite loop
+    if (nodesPlacedThisIteration === 0) {
+      break;
+    }
+  }
+
+  // Place any remaining unvisited nodes in a fallback layout
+  placeRemainingNodes(unvisitedNodes, arrangedSpace, typeSizeMap, options);
+
+  // Convert positioned nodes to result format
   const nodes: LayoutResult['nodes'] = Array.from(arrangedSpace.entries()).map(([id, pos]) => ({
     id,
     position: { x: pos.x, y: pos.y }

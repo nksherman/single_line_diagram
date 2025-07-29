@@ -1,124 +1,48 @@
 import React from 'react';
-import { Handle, Position } from '@xyflow/react';
+import { Handle, Position, NodeResizer } from '@xyflow/react';
 import { Box, Typography } from '@mui/material';
 import EquipmentBase from '../../../models/equipmentBase';
-import Generator from '../../../models/generatorEquipment';
-import Transformer from '../../../models/transformerEquipment';
 import Bus from '../../../models/busEquipment';
-import Meter from '../../../models/meterEquipment';
+import { getBaseEquipmentSize, calculateEquipmentDimensions, getTextGroups } from '../../../utils/equipmentDimensions';
 
 // Custom node component props
 interface ReactFlowEquipmentNodeProps {
   data: {
     equipment: EquipmentBase;
     onEdit: (equipment: EquipmentBase) => void;
+    onResize?: (equipment: EquipmentBase, width: number, height: number) => void;
   };
 }
 
-interface TextGroup {
-  left: string[];
-  right: string[];
-  topLeft?: string; // Optional for top-left text
-  topRight?: string; // Optional for top-right text
-  bottomLeft?: string; // Optional for bottom-left text
-  bottomRight?: string; // Optional for bottom-right text
-}
-
 const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data }) => {
-  const { equipment, onEdit } = data;
+  const { equipment, onEdit, onResize } = data;
   
   const handleDoubleClick = () => {
     onEdit(equipment);
   };
 
-  // Get equipment icon size based on type
-  const getEquipmentSize = (type: string): { width: number; height: number } => {
-    const sizes: Record<string, { width: number; height: number }> = {
-      Generator: { width: 40, height: 40 },
-      Transformer: { width: 60, height: 40 },
-      Bus: { width: 60, height: 4 },
-      Meter: { width: 30, height: 30 },
-      Switchgear: { width: 40, height: 40 },
-      Breaker: { width: 30, height: 30 },
-      Load: { width: 30, height: 30 },
-    };
-    return sizes[type] || { width: 40, height: 40 };
+  const handleResize = (_event: any, params: { width: number; height: number }) => {
+    if (equipment instanceof Bus && onResize) {
+      // Only allow horizontal resizing for Bus equipment
+      const bus = equipment as Bus;
+      bus.width = params.width;
+      onResize(equipment, params.width, params.height);
+    }
   };
+
+  const isBus = equipment instanceof Bus;
 
   // Get SVG icon path
   const getIconPath = (type: string): string => {
     return `/icons/${type.toLowerCase()}.svg`;
   };
 
-  // Generate text groups based on equipment type and properties
-  const getTextGroups = (equipment: EquipmentBase): TextGroup => {
-    const textGroup: TextGroup = {
-      left: [],
-      right: [],
-      topLeft: equipment.name
-    };
-
-    // Type-specific text elements
-    if (equipment instanceof Generator) {
-      const gen = equipment as Generator;
-      textGroup.right = [
-        `${gen.capacity}MW`,
-      ];
-      textGroup.bottomRight = `${gen.voltage}kV`;
-
-    } else if (equipment instanceof Transformer) {
-      const trans = equipment as Transformer;
-      textGroup.left = [
-        `${trans.powerRating}MVA`
-      ];
-      textGroup.right = [
-        `${trans.primaryVoltage}kV`,
-        `${trans.secondaryVoltage}kV`
-      ];
-    } else if (equipment instanceof Bus) {
-      const bus = equipment as Bus;
-      textGroup.topRight = `${bus.voltage}kV`;
-    } else if (equipment instanceof Meter) {
-      const meter = equipment as Meter;
-      textGroup.right = [
-        `${meter.currentRating}A`,
-        `${meter.voltageRating}kV`,
-      ];
-    }
-
-    return textGroup;
-  };
-
-  // Calculate dynamic width based on text content
-  const calculateWidth = (textGroups: TextGroup, iconWidth: number): number => {
-    const baseIconWidth = iconWidth;
-    
-    // Estimate text width (rough approximation)
-    const estimateTextWidth = (texts: string[]): number => {
-      if (texts.length === 0) return 0;
-      const maxLength = Math.max(...texts.map(text => text.length));
-      return Math.max(maxLength * 10); // Rough character width estimation
-    };
-
-    
-    const leftWidth = estimateTextWidth(textGroups.left);
-    const rightWidth = estimateTextWidth(textGroups.right);
-    const topBottomWidth = Math.max(
-      estimateTextWidth(textGroups.topLeft ? [textGroups.topLeft] : []) +  estimateTextWidth(textGroups.topRight ? [textGroups.topRight] : []),
-      estimateTextWidth(textGroups.bottomLeft ? [textGroups.bottomLeft] : []) + estimateTextWidth(textGroups.bottomRight ? [textGroups.bottomRight] : [])
-    );
-
-    return Math.max(
-      baseIconWidth + leftWidth + rightWidth,
-      topBottomWidth,
-      40 // Minimum width
-    );
-  };
-
-  const equipmentSize = getEquipmentSize(equipment.type);
+  // Use the shared dimension calculation
+  const equipmentDimensions = calculateEquipmentDimensions(equipment);
+  const equipmentSize = getBaseEquipmentSize(equipment.type);
   const iconPath = getIconPath(equipment.type);
+  const nodeWidth = equipmentDimensions.width;
   const textGroups = getTextGroups(equipment);
-  const nodeWidth = calculateWidth(textGroups, equipmentSize.width);
 
   const getNodeColor = (type: string) => {
     switch (type.toLowerCase()) {
@@ -190,6 +114,29 @@ const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data })
       }}
       onDoubleClick={handleDoubleClick}
     >
+      {/* NodeResizer for Bus equipment - only allow horizontal resizing */}
+      {isBus && (
+        <NodeResizer
+          onResize={handleResize}
+          isVisible={true}
+          minWidth={20}
+          minHeight={equipmentSize.height}
+          maxHeight={equipmentSize.height}
+          handleStyle={{
+            backgroundColor: getNodeColor(equipment.type),
+            border: `1px solid ${getNodeColor(equipment.type)}`,
+          }}
+          lineStyle={{
+            borderColor: getNodeColor(equipment.type),
+          }}
+          keepAspectRatio={false}
+          shouldResize={(_event, params) => {
+            // Only allow horizontal resizing
+            return params.direction[0] !== 0 && params.direction[1] === 0;
+          }}
+        />
+      )}
+      
       {/* Top handle for connections from sources */}
       {equipment instanceof Bus ? (
         <>

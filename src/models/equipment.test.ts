@@ -1,4 +1,4 @@
-import { EquipmentBase } from './equipmentBase';
+import EquipmentBase from './equipmentBase';
 import type { EquipmentType } from '../types/equipment.types';
 
 describe('EquipmentBase', () => {
@@ -279,3 +279,108 @@ function findPath(from: EquipmentBase, to: EquipmentBase, visited = new Set<Equi
   
   return null;
 }
+
+// Add Bus-specific tests
+import Bus from './busEquipment';
+import { calculateEquipmentDimensions } from '../utils/equipmentDimensions';
+
+describe('Bus Equipment', () => {
+  beforeEach(() => {
+    EquipmentBase.clearRegistry();
+  });
+
+  afterEach(() => {
+    EquipmentBase.clearRegistry();
+  });
+
+  describe('Bus Width Functionality', () => {
+    test('should create Bus with default width', () => {
+      const bus = new Bus('BUS-01', 'Main Bus', {
+        voltage: 13.8
+      });
+      
+      expect(bus.width).toBe(Bus.defaultWidth);
+      expect(bus.width).toBe(60); // default width
+    });
+
+    test('should create Bus with custom width', () => {
+      const customWidth = 120;
+      const bus = new Bus('BUS-01', 'Main Bus', {
+        voltage: 13.8,
+        width: customWidth
+      });
+      
+      expect(bus.width).toBe(customWidth);
+    });
+
+    test('should update Bus width dynamically', () => {
+      const bus = new Bus('BUS-01', 'Main Bus', {
+        voltage: 13.8
+      });
+      
+      const newWidth = 150;
+      bus.width = newWidth;
+      
+      expect(bus.width).toBe(newWidth);
+    });
+
+    test('should serialize and deserialize Bus with width', () => {
+      const originalBus = new Bus('BUS-01', 'Main Bus', {
+        voltage: 13.8,
+        width: 100
+      });
+      
+      const serialized = originalBus.toJSON();
+      expect(serialized.width).toBe(100);
+      
+      // Clear registry to simulate fresh state
+      EquipmentBase.clearRegistry();
+      
+      const deserializedBus = Bus.fromJSON(serialized);
+      expect(deserializedBus.width).toBe(100);
+      expect(deserializedBus.voltage).toBe(13.8);
+      expect(deserializedBus.name).toBe('Main Bus');
+    });
+
+    test('should handle missing width in JSON', () => {
+      const busData = {
+        id: 'BUS-01',
+        name: 'Main Bus',
+        type: 'Bus' as EquipmentType,
+        voltage: 13.8
+        // width is missing
+      };
+      
+      const bus = Bus.fromJSON(busData);
+      expect(bus.width).toBe(Bus.defaultWidth);
+    });
+  });
+
+  describe('Bus Dimension Calculation', () => {
+    test('should use Bus stored width in dimension calculation', () => {
+      const customWidth = 120;
+      const bus = new Bus('BUS-01', 'Main Bus', {
+        voltage: 13.8,
+        width: customWidth
+      });
+      
+      const dimensions = calculateEquipmentDimensions(bus);
+      expect(dimensions.width).toBe(customWidth);
+      expect(dimensions.height).toBe(4); // Bus default height
+    });
+
+    test('should update dimensions when Bus width changes', () => {
+      const bus = new Bus('BUS-01', 'Main Bus', {
+        voltage: 13.8,
+        width: 60
+      });
+      
+      let dimensions = calculateEquipmentDimensions(bus);
+      expect(dimensions.width).toBe(60);
+      
+      bus.width = 150;
+      dimensions = calculateEquipmentDimensions(bus);
+      expect(dimensions.width).toBe(150);
+    });
+  });
+});

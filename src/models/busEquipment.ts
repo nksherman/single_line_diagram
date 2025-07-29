@@ -4,25 +4,29 @@ import type { EquipmentBaseData, EquipmentType } from '../types/equipment.types'
 // import generatorSymbol from '../../public/icons/generator.svg';
 
 /**
- * Generator-specific properties and methods
+ * Bus-specific properties and methods
  */
 export interface BusProperties {
   voltage: number; // kV
   allowedSources?: number; // Optional, default is 16
   allowedLoads?: number; // Optional, default is 16
-
+  width?: number; // Optional, custom width for the bus
 }
 
-export interface BusEquipmentData extends EquipmentBaseData, BusProperties {}
+export interface BusEquipmentData extends EquipmentBaseData, BusProperties {
+  width?: number; // Include width in the data interface
+}
 
 /**
  * Bus class extending EquipmentBase with bus-specific functionality
  */
 class Bus extends EquipmentBase {
   public voltage: number;
+  public width: number; // Custom width for horizontal resizing
 
   public static allowedSources: number = 1;
   public static allowedLoads: number = 16;
+  public static defaultWidth: number = 60; // Default bus width
 
   public allowedSources: number = Bus.allowedSources;
   public allowedLoads: number = Bus.allowedLoads;
@@ -35,6 +39,7 @@ class Bus extends EquipmentBase {
     super(id, name, 'Bus' as EquipmentType);
     
     this.voltage = properties.voltage;
+    this.width = properties.width ?? Bus.defaultWidth;
 
     this.allowedSources = properties.allowedSources ?? Bus.allowedSources;
     this.allowedLoads = properties.allowedLoads ?? Bus.allowedLoads;
@@ -48,6 +53,16 @@ class Bus extends EquipmentBase {
       validation: (value: number) => {
         if (value <= 0) {
           return 'Voltage must be a positive number';
+        }
+      }
+    },
+    width: {
+      type: 'number',
+      label: 'Width (px)',
+      defaultValue: Bus.defaultWidth,
+      validation: (value: number) => {
+        if (value < 20) {
+          return 'Width must be at least 20 pixels';
         }
       }
     },
@@ -78,13 +93,15 @@ class Bus extends EquipmentBase {
       id: this.id,
       name: this.name,
       type: this.type,
-      voltage: this.voltage
+      voltage: this.voltage,
+      width: this.width
     };
   }
 
   static fromJSON(data: BusEquipmentData): Bus {
     const bus = new Bus(data.id, data.name, {
-      voltage: data.voltage
+      voltage: data.voltage,
+      width: data.width
     });
     return bus;
   }
@@ -99,7 +116,7 @@ class Bus extends EquipmentBase {
 
   // Override toString for better debugging
   toString() {
-    return `Bus(${this.id}, ${this.name}, Voltage: ${this.voltage}kV)`;
+    return `Bus(${this.id}, ${this.name}, Voltage: ${this.voltage}kV, Width: ${this.width}px)`;
   }
 }
 

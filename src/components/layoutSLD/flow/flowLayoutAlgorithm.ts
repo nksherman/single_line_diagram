@@ -36,6 +36,8 @@ export interface LayoutNode {
   loads: { id: string }[];
   sources: { id: string }[];
   position?: { x: number; y: number };
+  width: number;
+  height: number;
   name?: string;
 }
 
@@ -69,8 +71,8 @@ export interface DependencyGraph {
 // UTILITY FUNCTIONS
 // ==============================================================================
 
-function getEquipmentSize(type: string, typeSizeMap: Record<string, { width: number; height: number }>): { width: number; height: number } {
-  return typeSizeMap[type] || { width: 40, height: 40 };
+function getEquipmentSize(node: LayoutNode): { width: number; height: number } {
+  return { width: node.width, height: node.height };
 }
 
 // ==============================================================================
@@ -202,7 +204,6 @@ function getOpenSpace(
  */
 function createArrangedSpace(
   items: LayoutNode[],
-  typeSizeMap: Record<string, { width: number; height: number }>,
   options: LayoutOptions = {},
 ): Map<string, PositionedNode> {
   const { margin = 50 } = options;
@@ -217,7 +218,7 @@ function createArrangedSpace(
 
   // Set each hardSetNode position
   hardSetNodes.forEach(point => {
-    const size = getEquipmentSize(point.type, typeSizeMap);
+    const size = getEquipmentSize(point);
 
     // hardSetNodes have a defined position, so we can use it directly
     const posNode: PositionedNode = {
@@ -234,7 +235,7 @@ function createArrangedSpace(
   // If no hardSetNodes, set the first node to the margin position
   if (hardSetNodes.length === 0 && items.length > 0) {
     const firstNode = items[0];
-    const size = getEquipmentSize(firstNode.type, typeSizeMap);
+    const size = getEquipmentSize(firstNode);
     const posNode: PositionedNode = {
       x: margin,
       y: margin,
@@ -259,7 +260,6 @@ function setChildBelowParent(
   parentAnchor: LayoutNode,
   child: LayoutNode,
   setNodes: Map<string, PositionedNode>,
-  typeSizeMap: Record<string, { width: number; height: number }>,
   options: LayoutOptions,
 ): Map<string, PositionedNode> {
   const {
@@ -279,7 +279,7 @@ function setChildBelowParent(
 
   // Calculate the position for the child below the parent
   const yOffset = parentPosition.y + parentPosition.height + vertSpace;
-  const size = getEquipmentSize(child.type, typeSizeMap);
+  const size = getEquipmentSize(child);
 
   const foundPos = getOpenSpace(
     parentPosition.x, // Start directly below parent
@@ -308,7 +308,6 @@ function setParentAboveChild(
   childAnchor: LayoutNode,
   parent: LayoutNode,
   setNodes: Map<string, PositionedNode>,
-  typeSizeMap: Record<string, { width: number; height: number }>,
   options: LayoutOptions,
 ): Map<string, PositionedNode> {
   const {
@@ -326,7 +325,7 @@ function setParentAboveChild(
     return setNodes;
   }
 
-  const size = getEquipmentSize(parent.type, typeSizeMap);
+  const size = getEquipmentSize(parent);
   
   // Calculate the position for the parent above the child
   const yOffset = childPosition.y - vertSpace - size.height;
@@ -410,7 +409,6 @@ function tryPlaceNode(
   node: LayoutNode,
   items: LayoutNode[],
   arrangedSpace: Map<string, PositionedNode>,
-  typeSizeMap: Record<string, { width: number; height: number }>,
   options: LayoutOptions
 ): boolean {
   // Try to place based on arranged children (loads)
@@ -420,7 +418,7 @@ function tryPlaceNode(
     const childAnchor = items.find(item => item.id === rightmostChildId);
     
     if (childAnchor) {
-      setParentAboveChild(childAnchor, node, arrangedSpace, typeSizeMap, options);
+      setParentAboveChild(childAnchor, node, arrangedSpace, options);
       return true;
     }
   }
@@ -432,7 +430,7 @@ function tryPlaceNode(
     const parentAnchor = items.find(item => item.id === rightmostParentId);
     
     if (parentAnchor) {
-      setChildBelowParent(parentAnchor, node, arrangedSpace, typeSizeMap, options);
+      setChildBelowParent(parentAnchor, node, arrangedSpace, options);
       return true;
     }
   }
@@ -446,7 +444,6 @@ function tryPlaceNode(
 function placeRemainingNodes(
   unvisitedNodes: LayoutNode[],
   arrangedSpace: Map<string, PositionedNode>,
-  typeSizeMap: Record<string, { width: number; height: number }>,
   options: LayoutOptions
 ): void {
   const { vertSpace = 150, nodeSpacing = 120 } = options;
@@ -459,7 +456,7 @@ function placeRemainingNodes(
   const topPosX = Math.min(...Array.from(arrangedSpace.values()).map(pos => pos.x));
   
   unvisitedNodes.forEach((node, index) => {
-    const size = getEquipmentSize(node.type, typeSizeMap);
+    const size = getEquipmentSize(node);
     const posNode: PositionedNode = {
       x: topPosX + (index * (size.width + nodeSpacing)),
       y: topPosY, 
@@ -478,7 +475,6 @@ function placeRemainingNodes(
 export function generateDescendingLayout(
   items: LayoutNode[],
   arrangedSpace: Map<string, PositionedNode>,
-  typeSizeMap: Record<string, { width: number; height: number }>,
   options: LayoutOptions = {},
 ): LayoutResult {
   let unvisitedNodes = items.filter(item => !arrangedSpace.has(item.id));
@@ -492,7 +488,7 @@ export function generateDescendingLayout(
 
     // Try to place each unvisited node
     unvisitedNodes.forEach(node => {
-      if (tryPlaceNode(node, items, arrangedSpace, typeSizeMap, options)) {
+      if (tryPlaceNode(node, items, arrangedSpace, options)) {
         nodesPlacedThisIteration++;
       }
     });
@@ -507,7 +503,7 @@ export function generateDescendingLayout(
   }
 
   // Place any remaining unvisited nodes in a fallback layout
-  placeRemainingNodes(unvisitedNodes, arrangedSpace, typeSizeMap, options);
+  placeRemainingNodes(unvisitedNodes, arrangedSpace, options);
 
   // Convert positioned nodes to result format
   const nodes: LayoutResult['nodes'] = Array.from(arrangedSpace.entries()).map(([id, pos]) => ({
@@ -526,7 +522,6 @@ export function generateDescendingLayout(
  */
 export function setUnsetEquipmentPositions(
   items: LayoutNode[],
-  typeSizeMap: Record<string, { width: number; height: number }>,
   options: LayoutOptions = {},
 ): LayoutNode[] {
   const unsetItems = items.filter(item => 
@@ -538,8 +533,8 @@ export function setUnsetEquipmentPositions(
     return items;
   }
 
-  const arrangedSpace = createArrangedSpace(items, typeSizeMap, options);
-  const layout = generateDescendingLayout(items, arrangedSpace, typeSizeMap, options);
+  const arrangedSpace = createArrangedSpace(items, options);
+  const layout = generateDescendingLayout(items, arrangedSpace, options);
   const positionMap = new Map(layout.nodes.map(node => [node.id, node.position]));
 
   // Return updated items with new positions

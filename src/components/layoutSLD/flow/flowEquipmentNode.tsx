@@ -1,9 +1,10 @@
 import React from 'react';
-import { Handle, Position, NodeResizer } from '@xyflow/react';
+import { Handle, Position } from '@xyflow/react';
 import { Box, Typography } from '@mui/material';
 import EquipmentBase from '../../../models/equipmentBase';
 import Bus from '../../../models/busEquipment';
 import { getBaseEquipmentSize, calculateEquipmentDimensions, getTextGroups } from '../../../utils/equipmentDimensions';
+import BusEquipmentNode from './busEquipmentNode';
 
 // Custom node component props
 interface ReactFlowEquipmentNodeProps {
@@ -16,22 +17,16 @@ interface ReactFlowEquipmentNodeProps {
 }
 
 const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data, selected }) => {
-  const { equipment, onEdit, onResize } = data;
+  const { equipment, onEdit } = data;
+  
+  // If this is a bus equipment, use the specialized bus component
+  if (equipment instanceof Bus) {
+    return <BusEquipmentNode data={{ ...data, equipment: equipment as Bus }} selected={selected} />;
+  }
   
   const handleDoubleClick = () => {
     onEdit(equipment);
   };
-
-  const handleResize = (_event: any, params: { width: number; height: number }) => {
-    if (equipment instanceof Bus && onResize) {
-      // Only allow horizontal resizing for Bus equipment
-      const bus = equipment as Bus;
-      bus.width = params.width;
-      onResize(equipment, params.width, params.height);
-    }
-  };
-
-  const isBus = equipment instanceof Bus;
 
   // Get SVG icon path
   const getIconPath = (type: string): string => {
@@ -62,40 +57,6 @@ const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data, s
     }
   };
 
-  // Generate handles for bus equipment
-  const generateBusHandles = (equipment: EquipmentBase, sourceSide: boolean, side: 'left' | 'right' | 'top' | 'bottom') => {
-    if (!(equipment instanceof Bus)) return null;
-    const bus = equipment as Bus;
-
-    const pos = side === 'top' ? Position.Top : side === 'bottom' ? Position.Bottom : side === 'left' ? Position.Left : Position.Right;
-
-    let handlesCount = 0;
-    if (sourceSide) {
-      handlesCount = bus.sources?.size || 1;
-    } else {
-      handlesCount = bus.loads?.size || 1;
-    }
-    
-    const handles = [];
-    for (let i = 0; i < handlesCount; i++) {
-      handles.push(
-        <Handle
-           key={`${side}-${i}`}
-          type={sourceSide ? 'target' : 'source'}
-          position={pos}
-          id={`${side}-${i}`}
-          style={{ 
-            background: getNodeColor(equipment.type),
-            left: side === 'top' || side === 'bottom' ? `${((i + 1) / (handlesCount + 1)) * 100}%` : undefined,
-            top: side === 'left' || side === 'right' ? `${((i + 1) / (handlesCount + 1)) * 100}%` : undefined,
-          }}
-        />
-      );
-    }
-    
-    return handles;
-  };
-
   return (
     <Box
       sx={{
@@ -115,44 +76,15 @@ const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data, s
       }}
       onDoubleClick={handleDoubleClick}
     >
-      {/* NodeResizer for Bus equipment - only allow horizontal resizing */}
-      {isBus && (
-        <NodeResizer
-          onResize={handleResize}
-          isVisible={selected}
-          minWidth={20}
-          minHeight={equipmentSize.height}
-          maxHeight={equipmentSize.height}
-          handleStyle={{
-            backgroundColor: getNodeColor(equipment.type),
-            border: `1px solid ${getNodeColor(equipment.type)}`,
-          }}
-          lineStyle={{
-            borderColor: getNodeColor(equipment.type),
-          }}
-          keepAspectRatio={false}
-          shouldResize={(_event, params) => {
-            // Only allow horizontal resizing
-            return params.direction[0] !== 0 && params.direction[1] === 0;
-          }}
-        />
-      )}
-      
       {/* Top handle for connections from sources */}
-      {equipment instanceof Bus ? (
-        <>
-          {generateBusHandles(equipment, true, 'top')}
-        </>
-      ) : (
-        <Handle
-          type="target"
-          position={Position.Top}
-          id="top"
-          style={{ 
-            background: getNodeColor(equipment.type),
-          }}
-        />
-      )}
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="top"
+        style={{ 
+          background: getNodeColor(equipment.type),
+        }}
+      />
       
       {/* Top text */}
       <Box>
@@ -343,20 +275,14 @@ const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data, s
       )}
       </Box>
       {/* Bottom handle for connections to loads */}
-      {equipment instanceof Bus ? (
-        <>
-          {generateBusHandles(equipment, false, 'bottom')}
-        </>
-      ) : (
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          id="bottom"
-          style={{ 
-            background: getNodeColor(equipment.type),
-          }}
-        />
-      )}
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom"
+        style={{ 
+          background: getNodeColor(equipment.type),
+        }}
+      />
     </Box>
   );
 };

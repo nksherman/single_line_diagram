@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useEffect } from 'react';
+import React, { useCallback, useMemo, useEffect, forwardRef, useImperativeHandle } from 'react';
 import {
   ReactFlow,
   useNodesState,
@@ -13,7 +13,9 @@ import '@xyflow/react/dist/style.css';
 import Box from '@mui/material/Box';
 
 import ReactFlowEquipmentNode from './flowEquipmentNode';
+import BusEquipmentNode from './busEquipmentNode';
 import EquipmentBase from '../../../models/equipmentBase';
+import Bus from '../../../models/busEquipment';
 import { calculateEquipmentDimensions } from '../../../utils/equipmentDimensions';
 
 import { setUnsetEquipmentPositions, generateEdgesFromItems, type LayoutNode } from './flowLayoutAlgorithm';
@@ -39,6 +41,7 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
   // Custom node types
   const nodeTypes: NodeTypes = useMemo(() => ({
     equipmentNode: ReactFlowEquipmentNode,
+    busNode: BusEquipmentNode,
   }), []);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
@@ -99,7 +102,7 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
 
     const nodes: Node[] = equipmentList.map(equipment => ({
       id: equipment.id,
-      type: 'equipmentNode',
+      type: equipment instanceof Bus ? 'busNode' : 'equipmentNode',
       position: equipment.position || { x: 0, y: 0 },
       data: {
         equipment,

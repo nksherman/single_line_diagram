@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useEffect, useState } from 'react';
+import React, { useCallback, useMemo, useEffect, useState, useRef } from 'react';
 import {
   ReactFlow,
   useNodesState,
@@ -17,9 +17,10 @@ import ReactFlowEquipmentNode from './flowEquipmentNode';
 import BusEquipmentNode from './busEquipmentNode';
 import EquipmentBase from '../../../models/equipmentBase';
 import Bus from '../../../models/busEquipment';
-import { calculateEquipmentDimensions } from '../../../utils/equipmentDimensions';
 
+import { calculateEquipmentDimensions } from '../../../utils/equipmentDimensions';
 import { setUnsetEquipmentPositions, generateEdgesFromItems, type LayoutNode } from './flowLayoutAlgorithm';
+import ContextMenu from './flowContextMenu'
 
 /**
  *  This function takes a list of equipment and generates a layout for them.
@@ -29,11 +30,13 @@ import { setUnsetEquipmentPositions, generateEdgesFromItems, type LayoutNode } f
 export interface FlowLayoutEngineProps {
   equipmentList: EquipmentBase[];
   onEditEquipment: (equipment: EquipmentBase) => void;
+  onDeleteEquipment?: (equipment: EquipmentBase) => void;
 }
 
 const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
   equipmentList,
   onEditEquipment,
+  onDeleteEquipment,
 }) => {
   const vertSpace = 120; // vertical space between nodes
   const nodeSpacing = 10; // horizontal space between nodes
@@ -49,6 +52,8 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [snapLines, setSnapLines] = useState<Array<{x?: number, y?: number}>>([]);
+  const [menu, setMenu] = useState<any | null>(null);
+  const ref = useRef<HTMLDivElement | null>(null);
 
   // Create a wrapper component that has access to ReactFlow context
   const SnapLinesOverlay: React.FC = () => {
@@ -123,6 +128,33 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
       })
     );
   }, [setNodes]);
+
+  const handleConnect = useCallback((params: any) => {
+    console.log('onConnect', params);
+  }, []);
+
+  const handleNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
+    event.preventDefault();
+
+    const menuWidth = 200;
+    const menuHeight = 200;
+    
+    // Use viewport coordinates since we're using a portal with fixed positioning
+    const x = event.clientX;
+    const y = event.clientY;
+    
+    const menuProps = {
+      id: node.id,
+      top: y + menuHeight > window.innerHeight ? undefined : y,
+      left: x + menuWidth > window.innerWidth ? undefined : x,
+      right: x + menuWidth > window.innerWidth ? window.innerWidth - x : undefined,
+      bottom: y + menuHeight > window.innerHeight ? window.innerHeight - y : undefined,
+    };
+    
+    setMenu(menuProps);
+  }, [setMenu]);
+
+  const onPaneClick = useCallback(() => setMenu(null), [setMenu]);
 
   // Update layout when equipment list changes
   useEffect(() => {
@@ -352,13 +384,16 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
   }, [onNodesChange, equipmentList, nodes, edges]);
 
   return (
-    <Box style={{ width: '100%', height: '600px', position: 'relative' }}>
+    <Box ref={ref} style={{ width: '100%', height: '600px', position: 'relative' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
         onNodesChange={handleNodesChange}
-        onEdgesChange={onEdgesChange}
+        onEdgesChange ={onEdgesChange}
         nodeTypes={nodeTypes}
+        onConnect={handleConnect}
+        onNodeContextMenu={handleNodeContextMenu}
+        onPaneClick={onPaneClick}
         connectionMode={ConnectionMode.Loose}
         fitView
         fitViewOptions={{
@@ -369,6 +404,19 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
         <Controls />
         <Background />
         <SnapLinesOverlay />
+        {menu && (
+          <ContextMenu
+            id={menu.id}
+            top={menu.top}
+            left={menu.left}
+            right={menu.right}
+            bottom={menu.bottom}
+            equipmentList={equipmentList}
+            onEdit={onEditEquipment}
+            onDelete={onDeleteEquipment}
+            onClose={() => setMenu(null)}
+          />
+        )}
       </ReactFlow>
     </Box>
   );

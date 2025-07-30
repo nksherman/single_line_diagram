@@ -1,8 +1,6 @@
 import { EquipmentBase, type InputPropertiesDefinition } from './equipmentBase';
 import type { EquipmentBaseData, EquipmentType } from '../types/equipment.types';
 
-// import generatorSymbol from '../../public/icons/generator.svg';
-
 /**
  * Bus-specific properties and methods
  */

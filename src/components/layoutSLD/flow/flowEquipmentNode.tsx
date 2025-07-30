@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { Box, Typography } from '@mui/material';
+
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+
 import EquipmentBase from '../../../models/equipmentBase';
 import Bus from '../../../models/busEquipment';
 import { getBaseEquipmentSize, calculateEquipmentDimensions, getTextGroups } from '../../../utils/equipmentDimensions';
@@ -18,7 +21,7 @@ interface ReactFlowEquipmentNodeProps {
 
 const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data, selected }) => {
   const { equipment, onEdit } = data;
-  
+
   // If this is a bus equipment, use the specialized bus component
   if (equipment instanceof Bus) {
     return <BusEquipmentNode data={{ ...data, equipment: equipment as Bus }} selected={selected} />;

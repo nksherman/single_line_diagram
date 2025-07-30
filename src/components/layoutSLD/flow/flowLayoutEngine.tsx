@@ -134,24 +134,21 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
   }, []);
 
   const handleNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
+    // Prevent native context menu from showing
     event.preventDefault();
 
-    const menuWidth = 200;
-    const menuHeight = 200;
-    
-    // Use viewport coordinates since we're using a portal with fixed positioning
-    const x = event.clientX;
-    const y = event.clientY;
-    
-    const menuProps = {
+    // Calculate position of the context menu. We want to make sure it
+    // doesn't get positioned off-screen.
+    const pane = ref.current?.getBoundingClientRect();
+    if (!pane) return;
+
+    setMenu({
       id: node.id,
-      top: y + menuHeight > window.innerHeight ? undefined : y,
-      left: x + menuWidth > window.innerWidth ? undefined : x,
-      right: x + menuWidth > window.innerWidth ? window.innerWidth - x : undefined,
-      bottom: y + menuHeight > window.innerHeight ? window.innerHeight - y : undefined,
-    };
-    
-    setMenu(menuProps);
+      top: event.clientY < pane.height - 200 && event.clientY - pane.top,
+      left: event.clientX < pane.width - 200 && event.clientX - pane.left,
+      right: event.clientX >= pane.width - 200 && pane.width - (event.clientX - pane.left),
+      bottom: event.clientY >= pane.height - 200 && pane.height - (event.clientY - pane.top),
+    });
   }, [setMenu]);
 
   const onPaneClick = useCallback(() => setMenu(null), [setMenu]);
@@ -414,7 +411,7 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
             equipmentList={equipmentList}
             onEdit={onEditEquipment}
             onDelete={onDeleteEquipment}
-            onClose={() => setMenu(null)}
+            onClick={() => setMenu(null)}
           />
         )}
       </ReactFlow>

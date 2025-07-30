@@ -1,5 +1,4 @@
-import { useCallback, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import { Paper, MenuList, MenuItem, ListItemIcon, ListItemText, Divider } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
@@ -8,14 +7,14 @@ import EquipmentBase from '../../../models/equipmentBase';
 
 interface ContextMenuProps {
   id: string;
-  top?: number;
-  left?: number;
-  right?: number;
-  bottom?: number;
+  top?: number | false;
+  left?: number | false;
+  right?: number | false;
+  bottom?: number | false;
   equipmentList: EquipmentBase[];
   onEdit?: (equipment: EquipmentBase) => void;
   onDelete?: (equipment: EquipmentBase) => void;
-  onClose: () => void;
+  onClick: () => void; // This handles closing the menu when clicked
 }
 
 export default function ContextMenu({
@@ -27,35 +26,19 @@ export default function ContextMenu({
   equipmentList,
   onEdit,
   onDelete,
-  onClose,
+  onClick,
 }: ContextMenuProps) {
   const { setNodes, setEdges } = useReactFlow();
 
   // Find the equipment associated with this node
   const equipment = equipmentList.find(eq => eq.id === id);
 
-  // Add click-away listener
-  useEffect(() => {
-    const handleClickAway = (event: MouseEvent) => {
-      // Check if the click is outside the menu
-      const target = event.target as Element;
-      if (target && !target.closest('[data-context-menu]')) {
-        onClose();
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickAway);
-    return () => {
-      document.removeEventListener('mousedown', handleClickAway);
-    };
-  }, [onClose]);
-
   const handleEdit = useCallback(() => {
     if (equipment && onEdit) {
       onEdit(equipment);
     }
-    onClose();
-  }, [equipment, onEdit, onClose]);
+    onClick(); // Close menu
+  }, [equipment, onEdit, onClick]);
 
   const handleDelete = useCallback(() => {
     if (equipment && onDelete) {
@@ -66,23 +49,23 @@ export default function ContextMenu({
       setNodes((nodes) => nodes.filter((node) => node.id !== id));
       setEdges((edges) => edges.filter((edge) => edge.source !== id && edge.target !== id));
     }
-    onClose();
-  }, [id, equipment, onDelete, setNodes, setEdges, onClose]);
+    onClick(); // Close menu
+  }, [id, equipment, onDelete, setNodes, setEdges, onClick]);
 
-  return createPortal(
+  return (
     <Paper
-      data-context-menu
       sx={{
-        position: 'fixed',
-        top,
-        left,
-        right,
-        bottom,
-        zIndex: 2000,
+        position: 'absolute',
+        top: top || undefined,
+        left: left || undefined,
+        right: right || undefined,
+        bottom: bottom || undefined,
+        zIndex: 1000,
         minWidth: 150,
         boxShadow: 3,
       }}
       elevation={8}
+      onClick={(e: React.MouseEvent) => e.stopPropagation()} // Prevent closing when clicking inside menu
     >
       <MenuList dense>
         <MenuItem onClick={handleEdit} disabled={!onEdit}>
@@ -99,7 +82,6 @@ export default function ContextMenu({
           <ListItemText primary="Delete" />
         </MenuItem>
       </MenuList>
-    </Paper>,
-    document.body
+    </Paper>
   );
 }

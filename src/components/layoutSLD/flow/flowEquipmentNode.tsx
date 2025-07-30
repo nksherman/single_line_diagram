@@ -11,10 +11,11 @@ interface ReactFlowEquipmentNodeProps {
     equipment: EquipmentBase;
     onEdit: (equipment: EquipmentBase) => void;
     onResize?: (equipment: EquipmentBase, width: number, height: number) => void;
-  };
+  },
+  selected?: boolean;
 }
 
-const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data }) => {
+const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data, selected }) => {
   const { equipment, onEdit, onResize } = data;
   
   const handleDoubleClick = () => {
@@ -118,7 +119,7 @@ const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data })
       {isBus && (
         <NodeResizer
           onResize={handleResize}
-          isVisible={true}
+          isVisible={selected}
           minWidth={20}
           minHeight={equipmentSize.height}
           maxHeight={equipmentSize.height}
@@ -147,7 +148,9 @@ const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data })
           type="target"
           position={Position.Top}
           id="top"
-          style={{ background: getNodeColor(equipment.type) }}
+          style={{ 
+            background: getNodeColor(equipment.type),
+          }}
         />
       )}
       
@@ -208,31 +211,33 @@ const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data })
         }}
       >
         {/* Left gutter */}
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-end',
-            justifyContent: 'center',
+        {textGroups.left && (
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-end',
+              justifyContent: 'center',
             gap: 0.5,
             minWidth: 'fit-content',
           }}
-        >
-          {textGroups.left.map((text, index) => (
-            <Typography
-              key={`left-${index}`}
-              variant="body2"
-              sx={{
-                fontSize: 10,
-                color: index === 0 ? 'blue' : 'green',
-                whiteSpace: 'nowrap',
-                lineHeight: 1,
-              }}
-            >
-              {text}
-            </Typography>
-          ))}
-        </Box>
+          >
+            {textGroups.left.map((text, index) => (
+              <Typography
+                key={`left-${index}`}
+                variant="body2"
+                sx={{
+                  fontSize: 10,
+                  color: index === 0 ? 'blue' : 'green',
+                  whiteSpace: 'nowrap',
+                  lineHeight: 1,
+                }}
+              >
+                {text}
+              </Typography>
+            ))}
+          </Box>
+        )}
 
         {/* Center - SVG Icon */}
         <Box
@@ -347,7 +352,9 @@ const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data })
           type="source"
           position={Position.Bottom}
           id="bottom"
-          style={{ background: getNodeColor(equipment.type) }}
+          style={{ 
+            background: getNodeColor(equipment.type),
+          }}
         />
       )}
     </Box>

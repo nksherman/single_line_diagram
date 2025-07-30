@@ -47,6 +47,7 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
   // Handle equipment resize
   const handleEquipmentResize = useCallback((equipment: EquipmentBase, width: number, _height: number) => {
     // Update nodes to reflect the new dimensions
+
     setNodes((currentNodes) => 
       currentNodes.map((node) => {
         if (node.id === equipment.id) {

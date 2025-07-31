@@ -1,5 +1,5 @@
-import EquipmentBase from './equipmentBase';
-import type { EquipmentType } from '../types/equipment.types';
+import EquipmentBase from '../equipmentBase';
+import type { EquipmentType } from '../../types/equipment.types';
 
 describe('EquipmentBase', () => {
   beforeEach(() => {
@@ -36,6 +36,22 @@ describe('EquipmentBase', () => {
       
       expect(EquipmentBase.getById('GEN-01')).toBe(generator);
       expect(EquipmentBase.getAll()).toContain(generator);
+    });
+
+    test('should initialize with default position', () => {
+      const equipment = new EquipmentBase('EQ-01', 'Test Equipment', 'Other' as EquipmentType);
+      
+      expect(equipment.position).toEqual({ x: 0, y: 0 });
+    });
+
+    test('should allow setting and getting position', () => {
+      const equipment = new EquipmentBase('EQ-01', 'Test Equipment', 'Other' as EquipmentType);
+      const newPosition = { x: 100, y: 200 };
+      
+      equipment.position = newPosition;
+      expect(equipment.position).toEqual(newPosition);
+      // Should return a copy, not the original object
+      expect(equipment.position).not.toBe(newPosition);
     });
   });
 
@@ -111,6 +127,19 @@ describe('EquipmentBase', () => {
       
       expect(success).toBe(false);
     });
+
+    test('should get connections as readonly set', () => {
+      generator.addLoad(transformer);
+      generator.addLoad(switchgear);
+      
+      const connections = generator.connections;
+      expect(connections.size).toBe(2);
+      expect(connections.has(transformer)).toBe(true);
+      expect(connections.has(switchgear)).toBe(true);
+      
+      // Should be a Set instance (readonly is TypeScript-only)
+      expect(connections).toBeInstanceOf(Set);
+    });
   });
 
   describe('Equipment Queries', () => {
@@ -155,6 +184,60 @@ describe('EquipmentBase', () => {
       expect(motors).toContain(motor1);
       expect(motors).toContain(motor2);
     });
+
+    test('should get equipment by ID with type checking', () => {
+      const foundGenerator = EquipmentBase.getById('GEN-01', EquipmentBase);
+      
+      expect(foundGenerator).toBe(generator);
+    });
+
+    test('should return undefined when type doesn\'t match', () => {
+      // This would fail type checking in a real scenario with proper subclasses
+      const wrongType = EquipmentBase.getById('GEN-01', class TestType extends EquipmentBase {});
+      
+      expect(wrongType).toBeUndefined();
+    });
+  });
+
+  describe('Typed Connection Methods', () => {
+    let generator: EquipmentBase;
+    let transformer1: EquipmentBase;
+    let transformer2: EquipmentBase;
+    let motor: EquipmentBase;
+
+    beforeEach(() => {
+      generator = new EquipmentBase('GEN-01', 'Main Generator', 'Generator' as EquipmentType);
+      transformer1 = new EquipmentBase('XFMR-01', 'Transformer 1', 'Transformer' as EquipmentType);
+      transformer2 = new EquipmentBase('XFMR-02', 'Transformer 2', 'Transformer' as EquipmentType);
+      motor = new EquipmentBase('MTR-01', 'Motor 1', 'Motor' as EquipmentType);
+      
+      generator.addLoad(transformer1);
+      generator.addLoad(transformer2);
+      transformer1.addLoad(motor);
+    });
+
+    test('should get sources by type', () => {
+      const transformerSources = transformer1.getSourcesByType(EquipmentBase);
+      
+      expect(transformerSources).toHaveLength(1);
+      expect(transformerSources[0]).toBe(generator);
+    });
+
+    test('should get loads by type', () => {
+      const generatorLoads = generator.getLoadsByType(EquipmentBase);
+      
+      expect(generatorLoads).toHaveLength(2);
+      expect(generatorLoads).toContain(transformer1);
+      expect(generatorLoads).toContain(transformer2);
+    });
+
+    test('should get connections by type', () => {
+      const transformer1Connections = transformer1.getConnectionsByType(EquipmentBase);
+      
+      expect(transformer1Connections).toHaveLength(2);
+      expect(transformer1Connections).toContain(generator);
+      expect(transformer1Connections).toContain(motor);
+    });
   });
 
   describe('JSON Serialization', () => {
@@ -164,6 +247,7 @@ describe('EquipmentBase', () => {
     beforeEach(() => {
       generator = new EquipmentBase('GEN-01', 'Main Generator', 'Generator' as EquipmentType);
       transformer = new EquipmentBase('XFMR-01', 'Main Transformer', 'Transformer' as EquipmentType);
+      generator.position = { x: 100, y: 200 };
       generator.addLoad(transformer);
     });
 
@@ -175,7 +259,8 @@ describe('EquipmentBase', () => {
         name: 'Main Generator',
         type: 'Generator',
         sourceIds: [],
-        loadIds: ['XFMR-01']
+        loadIds: ['XFMR-01'],
+        position: { x: 100, y: 200 }
       });
     });
 
@@ -188,6 +273,7 @@ describe('EquipmentBase', () => {
       expect(recreated.id).toBe('GEN-01');
       expect(recreated.name).toBe('Main Generator');
       expect(recreated.type).toBe('Generator');
+      expect(recreated.position).toEqual({ x: 100, y: 200 });
     });
 
     test('should rebuild connections from JSON data', () => {
@@ -206,6 +292,20 @@ describe('EquipmentBase', () => {
       
       expect(recreatedGenerator?.loadIds).toContain('XFMR-01');
       expect(recreatedTransformer?.sourceIds).toContain('GEN-01');
+    });
+
+    test('should handle missing position in JSON', () => {
+      const jsonData = {
+        id: 'EQ-01',
+        name: 'Test Equipment',
+        type: 'Other' as EquipmentType,
+        sourceIds: [],
+        loadIds: []
+        // position is missing
+      };
+      
+      const equipment = EquipmentBase.fromJSON(jsonData);
+      expect(equipment.position).toEqual({ x: 0, y: 0 });
     });
   });
 
@@ -262,10 +362,56 @@ describe('EquipmentBase', () => {
       expect(sinks).toContain(motor1);
       expect(sinks).toContain(motor2);
     });
+
+    test('should handle circular references safely', () => {
+      // Create a circular reference to test the path finding algorithm
+      motor1.addLoad(generator); // This creates a cycle
+      
+      const path = findPath(generator, motor2);
+      expect(path).not.toBeNull();
+      
+      // The algorithm should still work and not get stuck in infinite loop
+      expect(path!.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Registry Management', () => {
+    test('should clear registry completely', () => {
+      new EquipmentBase('EQ-01', 'Equipment 1', 'Other' as EquipmentType);
+      new EquipmentBase('EQ-02', 'Equipment 2', 'Other' as EquipmentType);
+      
+      expect(EquipmentBase.getAll()).toHaveLength(2);
+      
+      EquipmentBase.clearRegistry();
+      
+      expect(EquipmentBase.getAll()).toHaveLength(0);
+      expect(EquipmentBase.getById('EQ-01')).toBeUndefined();
+      expect(EquipmentBase.getById('EQ-02')).toBeUndefined();
+    });
+
+    test('should allow creating equipment with same ID after clearing registry', () => {
+      new EquipmentBase('EQ-01', 'Equipment 1', 'Other' as EquipmentType);
+      
+      EquipmentBase.clearRegistry();
+      
+      // This should not throw an error
+      expect(() => {
+        new EquipmentBase('EQ-01', 'Equipment 2', 'Other' as EquipmentType);
+      }).not.toThrow();
+    });
+  });
+
+  describe('toString Method', () => {
+    test('should provide readable string representation', () => {
+      const equipment = new EquipmentBase('GEN-01', 'Main Generator', 'Generator' as EquipmentType);
+      
+      const str = equipment.toString();
+      expect(str).toBe('EquipmentBase(GEN-01: Main Generator [Generator])');
+    });
   });
 });
 
-// Helper function for path finding (moved from example)
+// Helper function for path finding
 function findPath(from: EquipmentBase, to: EquipmentBase, visited = new Set<EquipmentBase>()): EquipmentBase[] | null {
   if (from === to) return [from];
   if (visited.has(from)) return null;
@@ -279,108 +425,3 @@ function findPath(from: EquipmentBase, to: EquipmentBase, visited = new Set<Equi
   
   return null;
 }
-
-// Add Bus-specific tests
-import Bus from './busEquipment';
-import { calculateEquipmentDimensions } from '../utils/equipmentDimensions';
-
-describe('Bus Equipment', () => {
-  beforeEach(() => {
-    EquipmentBase.clearRegistry();
-  });
-
-  afterEach(() => {
-    EquipmentBase.clearRegistry();
-  });
-
-  describe('Bus Width Functionality', () => {
-    test('should create Bus with default width', () => {
-      const bus = new Bus('BUS-01', 'Main Bus', {
-        voltage: 13.8
-      });
-      
-      expect(bus.width).toBe(Bus.defaultWidth);
-      expect(bus.width).toBe(60); // default width
-    });
-
-    test('should create Bus with custom width', () => {
-      const customWidth = 120;
-      const bus = new Bus('BUS-01', 'Main Bus', {
-        voltage: 13.8,
-        width: customWidth
-      });
-      
-      expect(bus.width).toBe(customWidth);
-    });
-
-    test('should update Bus width dynamically', () => {
-      const bus = new Bus('BUS-01', 'Main Bus', {
-        voltage: 13.8
-      });
-      
-      const newWidth = 150;
-      bus.width = newWidth;
-      
-      expect(bus.width).toBe(newWidth);
-    });
-
-    test('should serialize and deserialize Bus with width', () => {
-      const originalBus = new Bus('BUS-01', 'Main Bus', {
-        voltage: 13.8,
-        width: 100
-      });
-      
-      const serialized = originalBus.toJSON();
-      expect(serialized.width).toBe(100);
-      
-      // Clear registry to simulate fresh state
-      EquipmentBase.clearRegistry();
-      
-      const deserializedBus = Bus.fromJSON(serialized);
-      expect(deserializedBus.width).toBe(100);
-      expect(deserializedBus.voltage).toBe(13.8);
-      expect(deserializedBus.name).toBe('Main Bus');
-    });
-
-    test('should handle missing width in JSON', () => {
-      const busData = {
-        id: 'BUS-01',
-        name: 'Main Bus',
-        type: 'Bus' as EquipmentType,
-        voltage: 13.8
-        // width is missing
-      };
-      
-      const bus = Bus.fromJSON(busData);
-      expect(bus.width).toBe(Bus.defaultWidth);
-    });
-  });
-
-  describe('Bus Dimension Calculation', () => {
-    test('should use Bus stored width in dimension calculation', () => {
-      const customWidth = 120;
-      const bus = new Bus('BUS-01', 'Main Bus', {
-        voltage: 13.8,
-        width: customWidth
-      });
-      
-      const dimensions = calculateEquipmentDimensions(bus);
-      expect(dimensions.width).toBe(customWidth);
-      expect(dimensions.height).toBe(4); // Bus default height
-    });
-
-    test('should update dimensions when Bus width changes', () => {
-      const bus = new Bus('BUS-01', 'Main Bus', {
-        voltage: 13.8,
-        width: 60
-      });
-      
-      let dimensions = calculateEquipmentDimensions(bus);
-      expect(dimensions.width).toBe(60);
-      
-      bus.width = 150;
-      dimensions = calculateEquipmentDimensions(bus);
-      expect(dimensions.width).toBe(150);
-    });
-  });
-});

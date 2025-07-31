@@ -88,9 +88,7 @@ class Bus extends EquipmentBase {
 
   toJSON(): BusEquipmentData {
     return {
-      id: this.id,
-      name: this.name,
-      type: this.type,
+      ...super.toJSON(),
       voltage: this.voltage,
       width: this.width
     };

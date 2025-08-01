@@ -275,9 +275,10 @@ function EquipmentCreator({equipmentList, setEquipmentList}: {
     if (propertyDef.type === 'select') {
       return (
         <FormControl fullWidth margin="dense" key={propertyKey}>
-          <InputLabel>{propertyDef.label}</InputLabel>
+          <InputLabel id={`select-label-${propertyKey}`}>{propertyDef.label}</InputLabel>
           <Select
             value={value}
+            labelId={`select-label-${propertyKey}`}
             label={propertyDef.label}
             onChange={(e) => handlePropertyChange(propertyKey, e.target.value)}
           >
@@ -322,9 +323,10 @@ function EquipmentCreator({equipmentList, setEquipmentList}: {
     if (propertyDef.type === 'boolean') {
       return (
         <FormControl fullWidth margin="dense" key={propertyKey}>
-          <InputLabel>{propertyDef.label}</InputLabel>
+          <InputLabel id={`select-label-${propertyKey}`}>{propertyDef.label}</InputLabel>
           <Select
             value={value}
+            labelId={`select-label-${propertyKey}`}
             label={propertyDef.label}
             onChange={(e) => handlePropertyChange(propertyKey, e.target.value === 'true')}
           >
@@ -365,9 +367,10 @@ function EquipmentCreator({equipmentList, setEquipmentList}: {
 
       {/* Select an equipment type */}
       <FormControl fullWidth margin="dense">
-        <InputLabel>Equipment Type</InputLabel>
+        <InputLabel id="select-label">Equipment Type</InputLabel>
         <Select
           value={selectedEquipmentType}
+          labelId="select-label"
           label="Equipment Type"
           onChange={(e) => handleEquipmentTypeChange(e.target.value)}
         >
@@ -393,12 +396,15 @@ function EquipmentCreator({equipmentList, setEquipmentList}: {
 
       {/* Select sources */}
       <FormControl fullWidth margin="dense">
-        <InputLabel>Sources (Optional)</InputLabel>
+        <InputLabel id="select-label-sources">Sources (Optional)</InputLabel>
         <Select
           multiple
           value={selectedSources}
           onChange={(e) => handleSelectChange(e.target.value, true)}
           input={<OutlinedInput label="Sources (Optional)" />}
+          labelId="select-label-sources"
+          label="Sources (Optional)"
+          MenuProps={{ PaperProps: { style: { maxHeight: 300 } } }}
           renderValue={(selected) => (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
               {selected.map((value) => {
@@ -420,12 +426,15 @@ function EquipmentCreator({equipmentList, setEquipmentList}: {
 
       {/* Select loads */}
       <FormControl fullWidth margin="dense">
-        <InputLabel>Loads (Optional)</InputLabel>
+        <InputLabel id="select-label-loads">Loads (Optional)</InputLabel>
         <Select
           multiple
           value={selectedLoads}
           onChange={(e) => handleSelectChange(e.target.value, false)}
           input={<OutlinedInput label="Loads (Optional)" />}
+          labelId="select-label-loads"
+          label="Loads (Optional)"
+          // Custom render value to show selected items as chips
           renderValue={(selected) => (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
               {selected.map((value) => {

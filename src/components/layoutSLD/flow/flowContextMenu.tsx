@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import { Paper, MenuList, MenuItem, ListItemIcon, ListItemText, Divider } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
@@ -29,6 +29,20 @@ export default function ContextMenu({
   onClick,
 }: ContextMenuProps) {
   const { setNodes, setEdges } = useReactFlow();
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClick(); // Close menu
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClick]);
 
   // Find the equipment associated with this node
   const equipment = equipmentList.find(eq => eq.id === id);

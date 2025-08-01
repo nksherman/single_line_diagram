@@ -303,9 +303,10 @@ function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSav
 
       {/* Operational Status */}
       <FormControl fullWidth margin="dense">
-        <InputLabel>Status</InputLabel>
+        <InputLabel id="select-label-status-edit">Status</InputLabel>
         <Select
           value={isOperational}
+          labelId='select-label-status-edit'
           label="Status"
           onChange={(e) => setIsOperational(e.target.value === 'true')}
         >
@@ -316,12 +317,14 @@ function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSav
 
       {/* Sources */}
       <FormControl fullWidth margin="dense">
-        <InputLabel>Sources (Required)</InputLabel>
+        <InputLabel id="select-label-sources-edit">Sources (Required)</InputLabel>
         <Select
           multiple
           value={selectedSources}
           onChange={(e) => handleConnectionChange(e.target.value, true)}
           input={<OutlinedInput label="Sources (Required)" />}
+          labelId="select-label-sources-edit"
+          label="Sources (Required)"
           renderValue={(selected) => (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
               {selected.map((value) => {
@@ -343,12 +346,14 @@ function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSav
 
       {/* Loads */}
       <FormControl fullWidth margin="dense">
-        <InputLabel>Loads (Required)</InputLabel>
+        <InputLabel id="select-label-loads-edit">Loads (Required)</InputLabel>
         <Select
           multiple
           value={selectedLoads}
           onChange={(e) => handleConnectionChange(e.target.value, false)}
           input={<OutlinedInput label="Loads (Required)" />}
+          labelId="select-label-loads-edit"
+          label="Loads (Required)"
           renderValue={(selected) => (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
               {selected.map((value) => {

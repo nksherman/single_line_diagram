@@ -1,13 +1,17 @@
 # Single Line Diagram - Patch Notes
 
 
-## v0.0.0 - Core Features
-**Released:** January 10, 2025  
-**Type:** Minor Release
+## v0.1.0 - Initial Public Hosting
+**Released:** August 1, 2025
+**Type:** Initial Alpha Release
 
 Implementation of core equipment types and basic diagram rendering.
+Generalized testing with CI/CD.
+
 
 ### Added ✅
-- Basic equipment models (Generator, Transformer, Bus)
+- Basic equipment models (Generator, Transformer, Bus, Meter)
 - Diagram rendering engine
 - Equipment connection system
+- Flow Node Snapping
+- Equipment Editting/Creation/Deletion

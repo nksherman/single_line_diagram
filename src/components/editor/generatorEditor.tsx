@@ -242,9 +242,10 @@ function GeneratorEditor({ generator, equipmentList, setEquipmentList, onSave }:
 
       {/* Fuel Type */}
       <FormControl fullWidth margin="dense">
-        <InputLabel>Fuel Type</InputLabel>
+        <InputLabel id="select-label-fuel-type">Fuel Type</InputLabel>
         <Select
           value={fuelType}
+          labelId="select-label-fuel-type"
           label="Fuel Type"
           onChange={(e) => setFuelType(e.target.value as GeneratorProperties['fuelType'])}
         >
@@ -281,12 +282,14 @@ function GeneratorEditor({ generator, equipmentList, setEquipmentList, onSave }:
 
       {/* Sources */}
       <FormControl fullWidth margin="dense">
-        <InputLabel>Sources (Optional)</InputLabel>
+        <InputLabel id="select-label-sources-edit">Sources (Optional)</InputLabel>
         <Select
           multiple
           value={selectedSources}
           onChange={(e) => handleConnectionChange(e.target.value, true)}
           input={<OutlinedInput label="Sources (Optional)" />}
+          labelId="select-label-sources-edit"
+          label="Sources (Optional)"
           renderValue={(selected) => (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
               {selected.map((value) => {
@@ -308,12 +311,14 @@ function GeneratorEditor({ generator, equipmentList, setEquipmentList, onSave }:
 
       {/* Loads */}
       <FormControl fullWidth margin="dense">
-        <InputLabel>Loads (Optional)</InputLabel>
+        <InputLabel id="select-label-loads-edit">Loads (Optional)</InputLabel>
         <Select
           multiple
           value={selectedLoads}
           onChange={(e) => handleConnectionChange(e.target.value, false)}
           input={<OutlinedInput label="Loads (Optional)" />}
+          labelId="select-label-loads-edit"
+          label="Loads (Optional)"
           renderValue={(selected) => (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
               {selected.map((value) => {

@@ -89,7 +89,7 @@ class Transformer extends EquipmentBase {
     phaseCount: {
       type: 'select',
       label: 'Phase Count',
-      defaultValue: 3,
+      defaultValue: 1,
       options: [1, 3],
       validation: (value: number) => {
         if (value !== 1 && value !== 3) {

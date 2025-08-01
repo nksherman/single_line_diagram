@@ -33,7 +33,7 @@ const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data, s
 
   // Get SVG icon path
   const getIconPath = (type: string): string => {
-    return `/icons/${type.toLowerCase()}.svg`;
+    return `${import.meta.env.BASE_URL}icons/${type.toLowerCase()}.svg`;
   };
 
   // Use the shared dimension calculation

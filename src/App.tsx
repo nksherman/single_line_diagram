@@ -13,10 +13,12 @@ import IconButton from '@mui/material/IconButton'
 import Toolbar from '@mui/material/Toolbar'
 import BuildIcon from '@mui/icons-material/Build'
 import CloseIcon from '@mui/icons-material/Close'
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
 import ReactMarkdown from 'react-markdown'
 
 import Display from './components/display'
 import EquipmentCreator from './components/equipmentCreator'
+import PDFExport from './components/pdfExport'
 
 import { EquipmentBase } from './models/equipmentBase'
 import Generator from './models/generatorEquipment'
@@ -104,6 +106,18 @@ function App() {
 
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [popoverContent, setPopoverContent] = useState<ReactNode | null>(null);
+
+  /* handle PDF export popover */
+  const handlePDFExportClick = (event: React.MouseEvent<HTMLElement>) => {
+
+    const reactFlowContent = document.getElementById('react-flow-container');
+    const pdfExportContent = (
+      <PDFExport
+        elementCopy={reactFlowContent}
+      />
+    );
+    handlePopoverOpen(pdfExportContent);
+  };
 
 
   /* handle popout info and formula */  
@@ -246,8 +260,6 @@ function App() {
           </IconButton>
         </Box>
 
-        
-
         {/* Drawer - Persistent variant allows interaction with both drawer and display */}
         <Drawer
           anchor="left"
@@ -258,7 +270,6 @@ function App() {
             flexShrink: 0,
             '& .MuiDrawer-paper': {
               width: 400,
-              marginLeft: '60px', // Account for sidebar width
               height: '100%', // Use 100% instead of 100vh to fit within the main content area
               display: 'flex',
               flexDirection: 'column',
@@ -294,12 +305,14 @@ function App() {
         </Drawer>
 
         {/* Display Area - Adjusts width based on drawer state */}
-        <Box sx={{ 
-          flex: 1, 
-          overflow: 'hidden',
-          position: 'relative',
-          transition: 'margin 0.3s ease-in-out',
-          marginLeft: isDrawerOpen ? 0 : 0, // Smooth transition when drawer opens/closes
+        <Box 
+          id="display-area"
+          sx={{ 
+            flex: 1, 
+            overflow: 'hidden',
+            position: 'relative',
+            transition: 'margin 0.3s ease-in-out',
+            marginLeft: isDrawerOpen ? 0 : 0, // Smooth transition when drawer opens/closes
         }}>
           <Display 
             equipmentList={equipment} 
@@ -324,6 +337,18 @@ function App() {
         <Typography variant="caption" color="text.secondary">
           © 2025 Single Line Diagram Tool
         </Typography>
+        <IconButton
+            onClick={handlePDFExportClick}
+            sx={{
+              mb: 2,
+              '&:hover': {
+                backgroundColor: 'grey.200',
+              },
+            }}
+            title="Export to PDF"
+          >
+            <PictureAsPdfIcon />
+          </IconButton>
         <Typography variant="caption" color="text.secondary">
           Equipment Count: {equipment.length}
         </Typography>

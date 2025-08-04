@@ -381,7 +381,7 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
   }, [onNodesChange, equipmentList, nodes, edges]);
 
   return (
-    <Box ref={ref} style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <Box ref={ref} id="react-flow-container" style={{ width: '100%', height: '100%', position: 'relative' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}

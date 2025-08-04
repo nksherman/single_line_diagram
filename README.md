@@ -19,7 +19,7 @@ A web-based tool for creating and visualizing electrical single line diagrams. T
 
 ## Live Demo
 
-Access the app here: [Single Line Diagram Generator on GitHub Pages](https://nksherman.github.io/single-line-diagram/)
+Access the app here: [Single Line Diagram Generator on GitHub Pages](https://nksherman.github.io/single_line_diagram/)
 
 ## Running Locally
 

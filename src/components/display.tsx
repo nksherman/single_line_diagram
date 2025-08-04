@@ -1,11 +1,7 @@
 import type { ReactNode } from 'react'
-import { Box } from '@mui/material';
 
 import { EquipmentBase } from '../models/equipmentBase';
-
-
 import ReactFlowLayoutEngine from './layoutSLD/flow/flowLayoutEngine';
-
 
 import EditEquipment from './editEquipment';
 
@@ -16,7 +12,6 @@ import EditEquipment from './editEquipment';
  * 
  * For now, display all equipment vertically.
  */
-
 
 function Display({ equipmentList, setEquipmentList, handlePopoverOpen }: { 
   equipmentList: EquipmentBase[]; setEquipmentList: (eq: EquipmentBase[]) => void; handlePopoverOpen: (content: ReactNode, anchorElement: HTMLElement | null) => void }) {

@@ -35,12 +35,10 @@ function Display({ equipmentList, setEquipmentList, handlePopoverOpen }: {
   }
   
   return (
-    <Box sx={{ width: '70vh', height: '100%', position: 'relative' }}>
-      <ReactFlowLayoutEngine
-        equipmentList={equipmentList}
-        onEditEquipment={handleEditEquipment}
-      />
-    </Box>
+    <ReactFlowLayoutEngine
+      equipmentList={equipmentList}
+      onEditEquipment={handleEditEquipment}
+    />
   );
 }
 

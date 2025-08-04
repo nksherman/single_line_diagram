@@ -8,6 +8,11 @@ import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 import Popover from '@mui/material/Popover'
 import Chip from '@mui/material/Chip'
+import Drawer from '@mui/material/Drawer'
+import IconButton from '@mui/material/IconButton'
+import Toolbar from '@mui/material/Toolbar'
+import BuildIcon from '@mui/icons-material/Build'
+import CloseIcon from '@mui/icons-material/Close'
 import ReactMarkdown from 'react-markdown'
 
 import Display from './components/display'
@@ -93,6 +98,9 @@ const versionNumber = extractVersionNumber(patchNotesText);
 
 function App() {
   const [equipment, setEquipment] = useState<EquipmentBase[]>(() => defaultEquipment());
+  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+  const [drawerContent, setDrawerContent] = useState<ReactNode | null>(null);
+  const [drawerTitle, setDrawerTitle] = useState<string>('');
 
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [popoverContent, setPopoverContent] = useState<ReactNode | null>(null);
@@ -119,11 +127,75 @@ function App() {
     handlePopoverOpen(patchNotesContent, event.currentTarget );
   };
 
+  /* handle drawer open/close with any content */
+  const handleOpenDrawer = (title: string, content: ReactNode) => {
+    setDrawerTitle(title);
+    setDrawerContent(content);
+    setIsDrawerOpen(true);
+  };
+
+  const handleCloseDrawer = () => {
+    setIsDrawerOpen(false);
+    setDrawerContent(null);
+    setDrawerTitle('');
+  };
+
+  /* handle equipment creator drawer */
+  const handleToggleEquipmentCreator = () => {
+    if (isDrawerOpen && drawerTitle === 'Equipment Creator') {
+      handleCloseDrawer();
+    } else {
+      const equipmentCreatorContent = (
+        <>
+          <EquipmentCreator 
+            equipmentList={equipment} 
+            setEquipmentList={setEquipment}
+          />
+          <Button
+            onClick={() => console.log('Save equipment:', equipment)}
+            sx={{ mt: 2 }}
+            variant="contained"
+            fullWidth
+          >
+            Save
+          </Button>
+        </>
+      );
+      handleOpenDrawer('Equipment Creator', equipmentCreatorContent);
+    }
+  };
+
   return (
-    <Paper>
-      <Box sx={{ p: 2 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h2">Single Line Diagram</Typography>
+    <Box 
+      id="app-container"
+      sx={{
+        backgroundColor: 'background.paper',
+        height: '100vh',
+        width: '100vw',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        p: 0,
+        m: 0,
+      }}
+    >
+      {/* Header */}
+      <Box 
+        id="header"
+        sx={{ 
+          flexShrink: 0,
+          borderBottom: 1, 
+          borderColor: 'divider',
+      }}>
+        <Paper sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          px: 1, 
+          py: 1,
+          elevation: 1
+        }}>
+          <Typography variant="h4" component="h1">Single Line Diagram</Typography>
           <Chip
             label={versionNumber}
             onClick={handleVersionClick}
@@ -136,34 +208,128 @@ function App() {
               }
             }}
           />
+        </Paper>
+      </Box>
+
+      {/* Main Content */}
+      <Box sx={{ 
+        display: 'flex', 
+        flex: 1,
+        overflow: 'hidden'
+      }}>
+        {/* Sidebar */}
+        <Box
+          sx={{
+            width: 60,
+            flexShrink: 0,
+            backgroundColor: 'grey.100',
+            borderRight: 1,
+            borderColor: 'divider',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            py: 2,
+          }}
+        >
+          <IconButton
+            onClick={handleToggleEquipmentCreator}
+            sx={{
+              mb: 2,
+              backgroundColor: isDrawerOpen && drawerTitle === 'Equipment Creator' ? 'primary.main' : 'transparent',
+              color: isDrawerOpen && drawerTitle === 'Equipment Creator' ? 'white' : 'text.primary',
+              '&:hover': {
+                backgroundColor: isDrawerOpen && drawerTitle === 'Equipment Creator' ? 'primary.dark' : 'grey.200',
+              },
+            }}
+          >
+            <BuildIcon />
+          </IconButton>
         </Box>
+
         
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          {/* Equipment Creator */}
-          <Box sx={{ flex: '0 0 400px' }}>
-            <EquipmentCreator 
-              equipmentList={equipment} 
-              setEquipmentList={setEquipment}
-            />
-            <Button
-              onClick={() => console.log('Save equipment:', equipment)}
-            >
-              Save
-            </Button>
+
+        {/* Drawer - Persistent variant allows interaction with both drawer and display */}
+        <Drawer
+          anchor="left"
+          open={isDrawerOpen}
+          variant="persistent"
+          sx={{
+            width: isDrawerOpen ? 400 : 0,
+            flexShrink: 0,
+            '& .MuiDrawer-paper': {
+              width: 400,
+              marginLeft: '60px', // Account for sidebar width
+              height: '100%', // Use 100% instead of 100vh to fit within the main content area
+              display: 'flex',
+              flexDirection: 'column',
+              position: 'relative',
+              borderRight: 1,
+              borderColor: 'divider',
+            },
+          }}
+        >
+          <Toolbar
+            sx={{
+              flexShrink: 0,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              px: 2,
+              borderBottom: 1,
+              borderColor: 'divider',
+            }}
+          >
+            <Typography variant="h6">{drawerTitle}</Typography>
+            <IconButton onClick={handleCloseDrawer}>
+              <CloseIcon />
+            </IconButton>
+          </Toolbar>
+          <Box sx={{ 
+            p: 2, 
+            flex: 1,
+            overflow: 'auto'
+          }}>
+            {drawerContent}
           </Box>
-          
-          {/* Display */}
-          <Box sx={{ flex: 1 }}>
-            <Display 
-              equipmentList={equipment} 
-              setEquipmentList={setEquipment}
-              handlePopoverOpen={handlePopoverOpen}
-            />
-          </Box>
+        </Drawer>
+
+        {/* Display Area - Adjusts width based on drawer state */}
+        <Box sx={{ 
+          flex: 1, 
+          overflow: 'hidden',
+          position: 'relative',
+          transition: 'margin 0.3s ease-in-out',
+          marginLeft: isDrawerOpen ? 0 : 0, // Smooth transition when drawer opens/closes
+        }}>
+          <Display 
+            equipmentList={equipment} 
+            setEquipmentList={setEquipment}
+            handlePopoverOpen={handlePopoverOpen}
+          />
         </Box>
       </Box>
 
-      {/*  Popover anywhere */}
+      {/* Footer */}
+      <Box sx={{
+        flexShrink: 0,
+        borderTop: 1,
+        borderColor: 'divider',
+        px: 2,
+        py: 1,
+        backgroundColor: 'grey.50',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <Typography variant="caption" color="text.secondary">
+          © 2025 Single Line Diagram Tool
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          Equipment Count: {equipment.length}
+        </Typography>
+      </Box>
+
+      {/*  Popover entire screen */}
       <Popover
         open={Boolean(popoverContent)}
         anchorEl={anchorEl}
@@ -196,7 +362,7 @@ function App() {
       >
         {popoverContent}
       </Popover>
-    </Paper>
+    </Box>
   )
 }
 

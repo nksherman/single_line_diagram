@@ -18,7 +18,6 @@ import ReactMarkdown from 'react-markdown'
 
 import Display from './components/display'
 import EquipmentCreator from './components/equipmentCreator'
-import PDFExport from './components/pdfExport'
 
 import { EquipmentBase } from './models/equipmentBase'
 import Generator from './models/generatorEquipment'
@@ -106,19 +105,6 @@ function App() {
 
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [popoverContent, setPopoverContent] = useState<ReactNode | null>(null);
-
-  /* handle PDF export popover */
-  const handlePDFExportClick = (event: React.MouseEvent<HTMLElement>) => {
-
-    const reactFlowContent = document.getElementById('react-flow-container');
-    const pdfExportContent = (
-      <PDFExport
-        elementCopy={reactFlowContent}
-      />
-    );
-    handlePopoverOpen(pdfExportContent);
-  };
-
 
   /* handle popout info and formula */  
   const handlePopoverOpen = (content: ReactNode , anchorElement: HTMLElement | null = null) => {
@@ -337,18 +323,6 @@ function App() {
         <Typography variant="caption" color="text.secondary">
           © 2025 Single Line Diagram Tool
         </Typography>
-        <IconButton
-            onClick={handlePDFExportClick}
-            sx={{
-              mb: 2,
-              '&:hover': {
-                backgroundColor: 'grey.200',
-              },
-            }}
-            title="Export to PDF"
-          >
-            <PictureAsPdfIcon />
-          </IconButton>
         <Typography variant="caption" color="text.secondary">
           Equipment Count: {equipment.length}
         </Typography>

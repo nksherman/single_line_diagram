@@ -7,6 +7,7 @@ import Typography from '@mui/material/Typography';
 import EquipmentBase from '../../../models/equipmentBase';
 import Bus from '../../../models/busEquipment';
 import { getBaseEquipmentSize, calculateEquipmentDimensions, getTextGroups } from '../../../utils/equipmentDimensions';
+import { getIconPath } from '../../../utils/iconUtils';
 import BusEquipmentNode from './busEquipmentNode';
 
 // Custom node component props
@@ -29,11 +30,6 @@ const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data, s
   
   const handleDoubleClick = () => {
     onEdit(equipment);
-  };
-
-  // Get SVG icon path
-  const getIconPath = (type: string): string => {
-    return `${import.meta.env.BASE_URL}icons/${type.toLowerCase()}.svg`;
   };
 
   // Use the shared dimension calculation

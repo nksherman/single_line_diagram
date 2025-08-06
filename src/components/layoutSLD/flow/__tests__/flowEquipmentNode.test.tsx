@@ -17,6 +17,11 @@ jest.mock('../../../../utils/equipmentDimensions', () => ({
   })),
 }));
 
+// Mock the icon utilities
+jest.mock('../../../../utils/iconUtils', () => ({
+  getIconPath: jest.fn((type: string) => `/icons/${type.toLowerCase()}.svg`),
+}));
+
 describe('ReactFlowEquipmentNode', () => {
   let mockEquipment: EquipmentBase;
   let mockOnEdit: jest.Mock;

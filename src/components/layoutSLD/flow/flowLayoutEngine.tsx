@@ -20,6 +20,7 @@ import Bus from '../../../models/busEquipment';
 import { calculateEquipmentDimensions } from '../../../utils/equipmentDimensions';
 import { setUnsetEquipmentPositions, generateEdgesFromItems, type LayoutNode } from './flowLayoutAlgorithm';
 import ContextMenu from './flowContextMenu';
+import EdgeContextMenu from './flowEdgeContextMenu';
 import { useNodeSnapping } from './flowHooks/useNodeSnapping';
 import SnapLinesOverlay from './SnapLinesOverlay';
 
@@ -33,6 +34,7 @@ export interface FlowLayoutEngineProps {
   onEditEquipment: (equipment: EquipmentBase) => void;
   onDeleteEquipment?: (equipment: EquipmentBase) => void;
   onConnectEquipment?: (sourceId: string, targetId: string) => boolean;
+  onDeleteConnection?: (sourceId: string, targetId: string) => void;
 }
 
 const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
@@ -40,6 +42,7 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
   onEditEquipment,
   onDeleteEquipment,
   onConnectEquipment,
+  onDeleteConnection,
 }) => {
   const vertSpace = 120; // vertical space between nodes
   const nodeSpacing = 10; // horizontal space between nodes
@@ -54,7 +57,14 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
-  const [menu, setMenu] = useState<any | null>(null);
+  const [menu, setMenu] = useState<{
+    id: string;
+    type: 'node' | 'edge';
+    top?: number | false;
+    left?: number | false;
+    right?: number | false;
+    bottom?: number | false;
+  } | null>(null);
   const ref = useRef<HTMLDivElement | null>(null);
 
   // Use the snapping hook
@@ -94,6 +104,23 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
     }
   }, [onConnectEquipment]);
 
+  const handleDeleteEdge = useCallback((edgeId: string) => {
+    // Parse the edge ID to get source and target
+    // Edge IDs are typically in format "source-target" based on the generateEdgesFromItems function
+    const edge = edges.find(e => e.id === edgeId);
+
+    const {source, target} = edge || {};
+    if (!source || !target) {
+      console.warn(`Edge with ID ${edgeId} not found or invalid.`);
+      return;
+    }
+    if (edge && onDeleteConnection) {
+      onDeleteConnection(source, target);
+    } else {
+      console.warn(`Edge with ID ${edgeId} not found or no onDeleteConnection handler provided.`, edge);
+    }
+  }, [edges, onDeleteConnection, setEdges]);
+
   const handleNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
     // Prevent native context menu from showing
     event.preventDefault();
@@ -105,6 +132,26 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
 
     setMenu({
       id: node.id,
+      type: 'node',
+      top: event.clientY < pane.height - 200 && event.clientY - pane.top,
+      left: event.clientX < pane.width - 200 && event.clientX - pane.left,
+      right: event.clientX >= pane.width - 200 && pane.width - (event.clientX - pane.left),
+      bottom: event.clientY >= pane.height - 200 && pane.height - (event.clientY - pane.top),
+    });
+  }, [setMenu]);
+
+  const handleEdgeContextMenu = useCallback((event: React.MouseEvent, edge: Edge) => {
+    // Prevent native context menu from showing
+    event.preventDefault();
+
+    // Calculate position of the context menu. We want to make sure it
+    // doesn't get positioned off-screen.
+    const pane = ref.current?.getBoundingClientRect();
+    if (!pane) return;
+
+    setMenu({
+      id: edge.id,
+      type: 'edge',
       top: event.clientY < pane.height - 200 && event.clientY - pane.top,
       left: event.clientX < pane.width - 200 && event.clientX - pane.left,
       right: event.clientX >= pane.width - 200 && pane.width - (event.clientX - pane.left),
@@ -187,6 +234,7 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
         nodeTypes={nodeTypes}
         onConnect={handleConnect}
         onNodeContextMenu={handleNodeContextMenu}
+        onEdgeContextMenu={handleEdgeContextMenu}
         onPaneClick={onPaneClick}
         connectionMode={ConnectionMode.Loose}
         fitView
@@ -198,7 +246,7 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
         <Controls />
         <Background />
         <SnapLinesOverlay snapLines={snapLines} />
-        {menu && (
+        {menu && menu.type === 'node' && (
           <ContextMenu
             id={menu.id}
             top={menu.top}
@@ -208,6 +256,17 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
             equipmentList={equipmentList}
             onEdit={onEditEquipment}
             onDelete={onDeleteEquipment}
+            onClick={() => setMenu(null)}
+          />
+        )}
+        {menu && menu.type === 'edge' && (
+          <EdgeContextMenu
+            id={menu.id}
+            top={menu.top}
+            left={menu.left}
+            right={menu.right}
+            bottom={menu.bottom}
+            onDeleteEdge={handleDeleteEdge}
             onClick={() => setMenu(null)}
           />
         )}

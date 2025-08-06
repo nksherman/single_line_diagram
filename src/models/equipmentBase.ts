@@ -1,4 +1,4 @@
-import type { EquipmentBaseData, EquipmentType } from '../types/equipment.types';
+import type { EquipmentBaseData, EquipmentType, HandlePosition, HandleSide } from '../types/equipment.types';
 
 /**
  * Property definition for equipment input forms
@@ -30,6 +30,9 @@ export class EquipmentBase {
   // Direct references to other Equipment objects
   private _sources: Set<EquipmentBase> = new Set();
   private _loads: Set<EquipmentBase> = new Set();
+  
+  // Handle positions for connections
+  private _handles: HandlePosition[] = [];
   
   // Static registry to track all equipment instances
   private static registry: Map<string, EquipmentBase> = new Map();
@@ -78,11 +81,18 @@ export class EquipmentBase {
   removeSource(source: EquipmentBase): void {
     this._sources.delete(source);
     source._loads.delete(this);
+    // delete handles if it exists
+    this._handles = this._handles.filter(handle => handle.connectedEquipmentId !== source.id);
+    source._handles = source._handles.filter(handle => handle.connectedEquipmentId !== this.id);
   }
   
   removeLoad(load: EquipmentBase): void {
     this._loads.delete(load);
     load._sources.delete(this);
+
+    // delete handles if it exists
+    this._handles = this._handles.filter(handle => handle.connectedEquipmentId !== load.id);
+    load._handles = load._handles.filter(handle => handle.connectedEquipmentId !== this.id);
   }
   
   get sources(): ReadonlySet<EquipmentBase> {
@@ -113,6 +123,68 @@ export class EquipmentBase {
    */
   isConnectedTo(other: EquipmentBase): boolean {
     return this._sources.has(other) || this._loads.has(other);
+  }
+
+  /**
+   * Handle position management methods
+   */
+  
+  get handles(): ReadonlyArray<HandlePosition> {
+    return [...this._handles];
+  }
+
+  /**
+   * Add a handle position for a connection
+   */
+  addHandle(handle: HandlePosition): void {
+    // Remove existing handle with same ID if exists
+    this._handles = this._handles.filter(h => h.id !== handle.id);
+    this._handles.push({ ...handle });
+  }
+
+  /**
+   * Remove a handle by ID
+   */
+  removeHandle(handleId: string): void {
+    this._handles = this._handles.filter(h => h.id !== handleId);
+  }
+
+  /**
+   * Get handle by ID
+   */
+  getHandle(handleId: string): HandlePosition | undefined {
+    return this._handles.find(h => h.id === handleId);
+  }
+
+  /**
+   * Get handles by side
+   */
+  getHandlesBySide(side: HandleSide): HandlePosition[] {
+    return this._handles.filter(h => h.side === side);
+  }
+
+  /**
+   * Get handles for a specific connected equipment
+   */
+  getHandlesForEquipment(equipmentId: string): HandlePosition[] {
+    return this._handles.filter(h => h.connectedEquipmentId === equipmentId);
+  }
+
+  /**
+   * Update handle connection
+   */
+  updateHandleConnection(handleId: string, connectedEquipmentId?: string): void {
+    const handle = this._handles.find(h => h.id === handleId);
+    if (handle) {
+      handle.connectedEquipmentId = connectedEquipmentId;
+    }
+  }
+
+  /**
+   * Clear all handles
+   */
+  clearHandles(): void {
+    this._handles = [];
   }
   
   /**
@@ -175,7 +247,16 @@ export class EquipmentBase {
   static clearRegistry(): void {
     EquipmentBase.registry.clear();
   }
-  
+
+  /**
+   * Generate standardized handle ID that matches the layout algorithm
+   */
+  static generateStandardHandleId(equipmentId: string, isSource: boolean, side: string, index: number): string {
+    const prefix = isSource ? 'src' : 'load';
+    return `${equipmentId}-${prefix}-${side}-${index}`;
+  }
+
+
   /**
    * Create connections between equipment using IDs
    */
@@ -199,13 +280,20 @@ export class EquipmentBase {
       type: this.type,
       sourceIds: this.sourceIds,
       loadIds: this.loadIds,
-      position: this.position
+      position: this.position,
+      handles: [...this._handles]
     };
   }
 
   static fromJSON(data: EquipmentBaseData): EquipmentBase {
     const equipment = new EquipmentBase(data.id, data.name, data.type as EquipmentType);
     equipment.position = data?.position || { x: 0, y: 0 };
+    
+    // Load handles if they exist
+    if (data.handles) {
+      equipment._handles = [...data.handles];
+    }
+    
     return equipment;
   }
   

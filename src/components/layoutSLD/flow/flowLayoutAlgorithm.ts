@@ -14,6 +14,8 @@
  * - Collision detection and avoidance
  */
 
+import type { HandlePosition } from '../../../types/equipment.types';
+
 // ==============================================================================
 // TYPES AND INTERFACES
 // ==============================================================================
@@ -39,6 +41,7 @@ export interface LayoutNode {
   width: number;
   height: number;
   name?: string;
+  handles?: HandlePosition[]; // Handle positions for this equipment
 }
 
 export interface LayoutOptions {
@@ -129,10 +132,9 @@ export function generateEdgesFromItems(items: LayoutNode[]): Array<{
       targetSourceMap.get(load.id)!.push(item.id);
     });
   });
-  
+
   items.forEach(item => {
     item.loads.forEach((load, loadIndex) => {
-      // Determine source handle based on equipment type
       let sourceHandle = 'bottom';
       if (item.type === 'Bus') {
         sourceHandle = `bottom-${loadIndex}`;

@@ -175,6 +175,7 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
         width: dimensions.width,
         height: dimensions.height,
         name: eq.name, // used for debugging
+        handles: eq.handles ? [...eq.handles] : undefined, // Include handle positions
       };
     });
 

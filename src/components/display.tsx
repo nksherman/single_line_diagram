@@ -79,8 +79,6 @@ function Display({ equipmentList, setEquipmentList, handlePopoverOpen }: {
       
       // Trigger re-render by creating a new array reference
       setEquipmentList([...equipmentList]);
-      
-      console.log(`Connected ${sourceEquipment.name} to ${targetEquipment.name}`);
       return true;
     } else {
       console.warn(`Cannot connect: voltage mismatch. Source: ${sourceVoltage}V, Target: ${targetVoltage}V`);
@@ -92,7 +90,6 @@ function Display({ equipmentList, setEquipmentList, handlePopoverOpen }: {
     const sourceEquipment = equipmentList.find(eq => eq.id === sourceId);
     const targetEquipment = equipmentList.find(eq => eq.id === targetId);
 
-    console.log(`Attempting to delete connection from ${sourceEquipment?.name} to ${targetEquipment?.name}`);
     if (!sourceEquipment || !targetEquipment) {
       console.warn(`Cannot delete connection: source or target not found.`);
       return false;
@@ -104,22 +101,21 @@ function Display({ equipmentList, setEquipmentList, handlePopoverOpen }: {
       // Trigger re-render by creating a new array reference
       setEquipmentList([...equipmentList]);
       
-      console.log(`Deleted connection from ${sourceEquipment.name} to ${targetEquipment.name}`);
       return true;
     } else {
       console.warn(`No connection found between ${sourceEquipment.name} and ${targetEquipment.name}`);
       return false;
     }
   }
-  
+
   return (
-    <ReactFlowLayoutEngine
-      equipmentList={equipmentList}
-      onEditEquipment={handleEditEquipment}
-      onDeleteEquipment={handleDeleteEquipment}
-      onConnectEquipment={handleConnectEquipment}
-      onDeleteConnection={handleDeleteConnection}
-    />
+      <ReactFlowLayoutEngine
+        equipmentList={equipmentList}
+        onEditEquipment={handleEditEquipment}
+        onDeleteEquipment={handleDeleteEquipment}
+        onConnectEquipment={handleConnectEquipment}
+        onDeleteConnection={handleDeleteConnection}
+      />
   );
 }
 

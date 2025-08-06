@@ -11,7 +11,7 @@ import { getIconPath } from '../../../utils/iconUtils';
 import BusEquipmentNode from './busEquipmentNode';
 
 // Custom node component props
-interface ReactFlowEquipmentNodeProps {
+interface EquipmentNodeProps {
   data: {
     equipment: EquipmentBase;
     onEdit: (equipment: EquipmentBase) => void;
@@ -20,7 +20,7 @@ interface ReactFlowEquipmentNodeProps {
   selected?: boolean;
 }
 
-const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data, selected }) => {
+const EquipmentNode: React.FC<EquipmentNodeProps> = ({ data, selected }) => {
   const { equipment, onEdit } = data;
 
   // If this is a bus equipment, use the specialized bus component
@@ -286,4 +286,4 @@ const ReactFlowEquipmentNode: React.FC<ReactFlowEquipmentNodeProps> = ({ data, s
   );
 };
 
-export default ReactFlowEquipmentNode;
+export default EquipmentNode;

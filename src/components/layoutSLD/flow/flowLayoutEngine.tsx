@@ -12,7 +12,7 @@ import '@xyflow/react/dist/style.css';
 
 import Box from '@mui/material/Box';
 
-import ReactFlowEquipmentNode from './flowEquipmentNode';
+import EquipmentNode from './equipmentNode';
 import BusEquipmentNode from './busEquipmentNode';
 import EquipmentBase from '../../../models/equipmentBase';
 import Bus from '../../../models/busEquipment';

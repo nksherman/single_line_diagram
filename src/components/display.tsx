@@ -109,13 +109,13 @@ function Display({ equipmentList, setEquipmentList, handlePopoverOpen }: {
   }
 
   return (
-      <ReactFlowLayoutEngine
-        equipmentList={equipmentList}
-        onEditEquipment={handleEditEquipment}
-        onDeleteEquipment={handleDeleteEquipment}
-        onConnectEquipment={handleConnectEquipment}
-        onDeleteConnection={handleDeleteConnection}
-      />
+    <ReactFlowLayoutEngine
+      equipmentList={equipmentList}
+      onEditEquipment={handleEditEquipment}
+      onDeleteEquipment={handleDeleteEquipment}
+      onConnectEquipment={handleConnectEquipment}
+      onDeleteConnection={handleDeleteConnection}
+    />
   );
 }
 

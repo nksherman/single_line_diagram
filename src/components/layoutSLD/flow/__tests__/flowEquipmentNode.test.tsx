@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ReactFlowProvider } from '@xyflow/react';
-import ReactFlowEquipmentNode from '../flowEquipmentNode';
+import ReactFlowEquipmentNode from '../equipmentNode';
 import EquipmentBase from '../../../../models/equipmentBase';
 
 // Mock the equipment dimensions utility

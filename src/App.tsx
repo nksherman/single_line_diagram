@@ -13,7 +13,6 @@ import IconButton from '@mui/material/IconButton'
 import Toolbar from '@mui/material/Toolbar'
 import BuildIcon from '@mui/icons-material/Build'
 import CloseIcon from '@mui/icons-material/Close'
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
 import ReactMarkdown from 'react-markdown'
 
 import Display from './components/display'
@@ -100,13 +99,11 @@ const versionNumber = extractVersionNumber(patchNotesText);
 function App() {
   const [equipment, setEquipment] = useState<EquipmentBase[]>(() => defaultEquipment());
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
-  const [drawerContent, setDrawerContent] = useState<ReactNode | null>(null);
   const [drawerTitle, setDrawerTitle] = useState<string>('');
 
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [popoverContent, setPopoverContent] = useState<ReactNode | null>(null);
 
-  /* handle popout info and formula */  
   const handlePopoverOpen = (content: ReactNode , anchorElement: HTMLElement | null = null) => {
     setPopoverContent(content);
     setAnchorEl(anchorElement);
@@ -117,7 +114,6 @@ function App() {
     setPopoverContent(null);
   };
 
-  /* handle version popover */
   const handleVersionClick = (event: React.MouseEvent<HTMLElement>) => {
     const patchNotesContent = (
       <Box sx={{ p: 2, maxWidth: 600, maxHeight: 400, overflow: 'auto' }}>
@@ -127,25 +123,28 @@ function App() {
     handlePopoverOpen(patchNotesContent, event.currentTarget );
   };
 
-  /* handle drawer open/close with any content */
-  const handleOpenDrawer = (title: string, content: ReactNode) => {
+  const handleOpenDrawer = (title: string) => {
     setDrawerTitle(title);
-    setDrawerContent(content);
     setIsDrawerOpen(true);
   };
 
   const handleCloseDrawer = () => {
     setIsDrawerOpen(false);
-    setDrawerContent(null);
     setDrawerTitle('');
   };
 
-  /* handle equipment creator drawer */
   const handleToggleEquipmentCreator = () => {
     if (isDrawerOpen && drawerTitle === 'Equipment Creator') {
       handleCloseDrawer();
     } else {
-      const equipmentCreatorContent = (
+      handleOpenDrawer('Equipment Creator');
+    }
+  };
+
+  // Render drawer content based on drawer title, not stale
+  const renderDrawerContent = () => {
+    if (drawerTitle === 'Equipment Creator') {
+      return (
         <>
           <EquipmentCreator 
             equipmentList={equipment} 
@@ -161,8 +160,8 @@ function App() {
           </Button>
         </>
       );
-      handleOpenDrawer('Equipment Creator', equipmentCreatorContent);
     }
+    return null;
   };
 
   return (
@@ -286,7 +285,7 @@ function App() {
             flex: 1,
             overflow: 'auto'
           }}>
-            {drawerContent}
+            {renderDrawerContent()}
           </Box>
         </Drawer>
 

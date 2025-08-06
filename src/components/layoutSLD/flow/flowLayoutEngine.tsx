@@ -6,9 +6,8 @@ import {
   Controls,
   Background,
   ConnectionMode,
-  useReactFlow,
 } from '@xyflow/react';
-import type { Node, Edge, NodeTypes, NodeChange } from '@xyflow/react';
+import type { Node, Edge, NodeTypes } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import Box from '@mui/material/Box';
@@ -20,7 +19,9 @@ import Bus from '../../../models/busEquipment';
 
 import { calculateEquipmentDimensions } from '../../../utils/equipmentDimensions';
 import { setUnsetEquipmentPositions, generateEdgesFromItems, type LayoutNode } from './flowLayoutAlgorithm';
-import ContextMenu from './flowContextMenu'
+import ContextMenu from './flowContextMenu';
+import { useNodeSnapping } from './flowHooks/useNodeSnapping';
+import SnapLinesOverlay from './SnapLinesOverlay';
 
 /**
  *  This function takes a list of equipment and generates a layout for them.
@@ -31,12 +32,14 @@ export interface FlowLayoutEngineProps {
   equipmentList: EquipmentBase[];
   onEditEquipment: (equipment: EquipmentBase) => void;
   onDeleteEquipment?: (equipment: EquipmentBase) => void;
+  onConnectEquipment?: (sourceId: string, targetId: string) => boolean;
 }
 
 const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
   equipmentList,
   onEditEquipment,
   onDeleteEquipment,
+  onConnectEquipment,
 }) => {
   const vertSpace = 120; // vertical space between nodes
   const nodeSpacing = 10; // horizontal space between nodes
@@ -51,68 +54,20 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
-  const [snapLines, setSnapLines] = useState<Array<{x?: number, y?: number}>>([]);
   const [menu, setMenu] = useState<any | null>(null);
   const ref = useRef<HTMLDivElement | null>(null);
 
-  // Create a wrapper component that has access to ReactFlow context
-  const SnapLinesOverlay: React.FC = () => {
-    const reactFlow = useReactFlow();
-    
-    return (
-      <>
-        {snapLines.map((line, index) => {
-          if (line.x !== undefined) {
-            // Vertical line - convert world coordinate to screen coordinate
-            const viewport = reactFlow.getViewport();
-            const screenX = (line.x * viewport.zoom) + viewport.x;
-            return (
-              <Box
-                key={index}
-                sx={{
-                  position: 'absolute',
-                  backgroundColor: '#ff6b6b',
-                  opacity: 0.8,
-                  pointerEvents: 'none',
-                  zIndex: 1000,
-                  left: screenX,
-                  top: 0,
-                  width: 2,
-                  height: '100%',
-                }}
-              />
-            );
-          } else if (line.y !== undefined) {
-            // Horizontal line - convert world coordinate to screen coordinate
-            const viewport = reactFlow.getViewport();
-            const screenY = (line.y * viewport.zoom) + viewport.y;
-            return (
-              <Box
-                key={index}
-                sx={{
-                  position: 'absolute',
-                  backgroundColor: '#ff6b6b',
-                  opacity: 0.8,
-                  pointerEvents: 'none',
-                  zIndex: 1000,  
-                  left: 0,
-                  top: screenY,
-                  width: '100%',
-                  height: 2,
-                }}
-              />
-            );
-          }
-          return null;
-        })}
-      </>
-    );
-  };
+  // Use the snapping hook
+  const {
+    snapLines,
+    createSnappingHandler,
+  } = useNodeSnapping({
+    equipmentList,
+    snapThreshold,
+  });
 
   // Handle equipment resize
   const handleEquipmentResize = useCallback((equipment: EquipmentBase, width: number, _height: number) => {
-    // Update nodes to reflect the new dimensions
-
     setNodes((currentNodes) => 
       currentNodes.map((node) => {
         if (node.id === equipment.id) {
@@ -130,8 +85,14 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
   }, [setNodes]);
 
   const handleConnect = useCallback((params: any) => {
-    console.log('onConnect', params);
-  }, []);
+    // Delegate to parent component to handle connection logic and state updates
+    if (onConnectEquipment) {
+      onConnectEquipment(params.source, params.target);
+    } else {
+      // Fallback: basic connection without state update
+      console.warn('No onConnectEquipment handler provided');
+    }
+  }, [onConnectEquipment]);
 
   const handleNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
     // Prevent native context menu from showing
@@ -213,172 +174,8 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
 
   }, [equipmentList, onEditEquipment, handleEquipmentResize, vertSpace, nodeSpacing, margin, setNodes, setEdges]);
 
-  // Helper function to get handle center position
-  const getHandleCenterPosition = (node: Node, handleId: string): { x: number; y: number } => {
-    if (!node.position) return { x: 0, y: 0 };
-    
-    // Get node dimensions
-    const equipment = equipmentList.find(eq => eq.id === node.id);
-    const dimensions = equipment ? calculateEquipmentDimensions(equipment) : { width: 100, height: 50 };
-    
-    const nodeCenter = {
-      x: node.position.x + dimensions.width / 2,
-      y: node.position.y + dimensions.height / 2
-    };
-
-    // Calculate handle position based on handle ID
-    if (handleId.startsWith('top')) {
-      let handleX = nodeCenter.x; // Default to center
-      
-      // For bus nodes with multiple handles, calculate position based on handle index
-      if (equipment instanceof Bus && handleId.includes('-')) {
-        const handleIndex = parseInt(handleId.split('-')[1]);
-        const handlesCount = equipment.sources?.size || 1;
-        // Position handles evenly across the width: left at ((i + 1) / (handlesCount + 1)) * 100%
-        handleX = node.position.x + ((handleIndex + 1) / (handlesCount + 1)) * dimensions.width;
-      }
-      
-      return {
-        x: handleX,
-        y: node.position.y
-      };
-    } else if (handleId.startsWith('bottom')) {
-      let handleX = nodeCenter.x; // Default to center
-      
-      // For bus nodes with multiple handles, calculate position based on handle index
-      if (equipment instanceof Bus && handleId.includes('-')) {
-        const handleIndex = parseInt(handleId.split('-')[1]);
-        const handlesCount = equipment.loads?.size || 1;
-        // Position handles evenly across the width
-        handleX = node.position.x + ((handleIndex + 1) / (handlesCount + 1)) * dimensions.width;
-      }
-      
-      return {
-        x: handleX,
-        y: node.position.y + dimensions.height
-      };
-    } else if (handleId.startsWith('left')) {
-      return {
-        x: node.position.x,
-        y: nodeCenter.y
-      };
-    } else if (handleId.startsWith('right')) {
-      return {
-        x: node.position.x + dimensions.width,
-        y: nodeCenter.y
-      };
-    }
-    
-    // Default to node center
-    return nodeCenter;
-  };
-
-  const snapToStraightEdge = (
-    draggedNodeId: string,
-    newPosition: { x: number; y: number },
-    nodes: Node[],
-    edges: Edge[]
-  ): { position: { x: number; y: number }, snapLines: Array<{x?: number, y?: number}> } => {
-    const connectedEdges = edges.filter(
-      edge => edge.source === draggedNodeId || edge.target === draggedNodeId
-    );
-
-    const draggedNode = nodes.find(node => node.id === draggedNodeId);
-    if (!draggedNode) return { position: newPosition, snapLines: [] };
-
-    let snappedX = newPosition.x;
-    let snappedY = newPosition.y;
-    const activeSnapLines: Array<{x?: number, y?: number}> = [];
-
-    connectedEdges.forEach(edge => {
-      const connectedNodeId = edge.source === draggedNodeId ? edge.target : edge.source;
-      const connectedNode = nodes.find(node => node.id === connectedNodeId);
-      
-      if (connectedNode && connectedNode.position) {
-        // Determine which handles are being connected
-        const draggedHandleId = edge.source === draggedNodeId ? edge.sourceHandle || 'bottom' : edge.targetHandle || 'top';
-        const connectedHandleId = edge.source === draggedNodeId ? edge.targetHandle || 'top' : edge.sourceHandle || 'bottom';
-        
-        // Get the connected node's handle center position
-        const connectedHandlePos = getHandleCenterPosition(connectedNode, connectedHandleId);
-        
-        // Calculate where the dragged node's handle would be with the new position
-        const draggedHandlePos = getHandleCenterPosition(
-          { ...draggedNode, position: newPosition },
-          draggedHandleId
-        );
-
-        // Snap horizontally to align handles vertically (for vertical edges)
-        const xDiff = Math.abs(draggedHandlePos.x - connectedHandlePos.x);
-        if (xDiff < snapThreshold) {
-          // Calculate the node position needed to align the handles
-          const handleOffsetX = draggedHandlePos.x - newPosition.x;
-          snappedX = connectedHandlePos.x - handleOffsetX;
-          activeSnapLines.push({ x: connectedHandlePos.x });
-        }
-
-        // Snap vertically to align handles horizontally (for horizontal edges)
-        const yDiff = Math.abs(draggedHandlePos.y - connectedHandlePos.y);
-        if (yDiff < snapThreshold) {
-          // Calculate the node position needed to align the handles
-          const handleOffsetY = draggedHandlePos.y - newPosition.y;
-          snappedY = connectedHandlePos.y - handleOffsetY;
-          activeSnapLines.push({ y: connectedHandlePos.y });
-        }
-      }
-    });
-
-    return { position: { x: snappedX, y: snappedY }, snapLines: activeSnapLines };
-  };
-
-  // Handle node position changes to update equipment positions
-  const handleNodesChange = useCallback((changes: NodeChange[]) => {
-    const updatedChanges = changes.map(change => {
-      if (change.type === 'position' && change.position) {
-        if (change.dragging === true) {
-          // Apply snapping while dragging
-          const result = snapToStraightEdge(
-            change.id,
-            change.position,
-            nodes,
-            edges
-          );
-          
-          setSnapLines(result.snapLines);
-          
-          return {
-            ...change,
-            position: result.position,
-          };
-        } else if (change.dragging === false) {
-          // Apply snapping one final time when dragging ends and save the position
-          const result = snapToStraightEdge(
-            change.id,
-            change.position,
-            nodes,
-            edges
-          );
-          
-          // Clear snap lines when dragging ends
-          setSnapLines([]);
-          
-          // Update equipment position with the final snapped position
-          const equipment = equipmentList.find(eq => eq.id === change.id);
-          if (equipment) {
-            equipment.position = result.position;
-          }
-          
-          return {
-            ...change,
-            position: result.position,
-          };
-        }
-      }
-      return change;
-    });
-    
-    onNodesChange(updatedChanges);
-  }, [onNodesChange, equipmentList, nodes, edges]);
+  // Create the snapping-aware node change handler
+  const handleNodesChange = createSnappingHandler(nodes, edges, onNodesChange);
 
   return (
     <Box ref={ref} id="react-flow-container" style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -400,7 +197,7 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
       >
         <Controls />
         <Background />
-        <SnapLinesOverlay />
+        <SnapLinesOverlay snapLines={snapLines} />
         {menu && (
           <ContextMenu
             id={menu.id}

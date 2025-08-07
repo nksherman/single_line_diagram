@@ -1,7 +1,11 @@
 import { useCallback, useEffect } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import { Paper, MenuList, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
+import Divider from '@mui/material/Divider';
+
 import DeleteIcon from '@mui/icons-material/Delete';
+
+import TouchAppIcon from '@mui/icons-material/TouchApp';
 
 interface EdgeContextMenuProps {
   id: string;
@@ -24,6 +28,8 @@ export default function EdgeContextMenu({
 }: EdgeContextMenuProps) {
   const { setEdges } = useReactFlow();
 
+  const thisEdge = useReactFlow().getEdge(id);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -37,6 +43,12 @@ export default function EdgeContextMenu({
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [onClick]);
+
+  const handleLog = useCallback(() => {
+    // Log the edge ID to the console
+    console.log(`Edge ID: ${id}, Source: ${thisEdge?.source}, Target: ${thisEdge?.target}`);
+    console.log(`Edge ID: ${id}, Source: ${thisEdge?.sourceHandle}, Target: ${thisEdge?.targetHandle}`);
+  }, [id, onClick]);
 
   const handleDelete = useCallback(() => {
     if (onDeleteEdge) {
@@ -64,6 +76,13 @@ export default function EdgeContextMenu({
       onClick={(e: React.MouseEvent) => e.stopPropagation()} // Prevent closing when clicking inside menu
     >
       <MenuList dense>
+        <MenuItem onClick={handleLog}>
+          <ListItemIcon>
+            <TouchAppIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary="Log" />
+        </MenuItem>
+        <Divider />
         <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
           <ListItemIcon>
             <DeleteIcon fontSize="small" sx={{ color: 'error.main' }} />

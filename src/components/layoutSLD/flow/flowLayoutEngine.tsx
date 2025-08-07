@@ -19,7 +19,9 @@ import Bus from '../../../models/busEquipment';
 
 import { calculateEquipmentDimensions } from '../../../utils/equipmentDimensions';
 import { setUnsetEquipmentPositions, generateEdgesFromItems, type LayoutNode } from './flowLayoutAlgorithm';
-import ContextMenu from './flowContextMenu';
+
+import { type CustomFlowNode } from './equipmentNode';
+import NodeContextMenu from './flowContextMenu';
 import EdgeContextMenu from './flowEdgeContextMenu';
 import { useNodeSnapping } from './flowHooks/useNodeSnapping';
 import SnapLinesOverlay from './SnapLinesOverlay';
@@ -31,6 +33,7 @@ import SnapLinesOverlay from './SnapLinesOverlay';
 
 export interface FlowLayoutEngineProps {
   equipmentList: EquipmentBase[];
+  triggerRerender?: () => void; // Optional callback to trigger a re-render
   onEditEquipment: (equipment: EquipmentBase) => void;
   onDeleteEquipment?: (equipment: EquipmentBase) => void;
   onConnectEquipment?: (sourceId: string, targetId: string) => boolean;
@@ -39,6 +42,7 @@ export interface FlowLayoutEngineProps {
 
 const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
   equipmentList,
+  triggerRerender,
   onEditEquipment,
   onDeleteEquipment,
   onConnectEquipment,
@@ -51,7 +55,7 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
 
   // Custom node types
   const nodeTypes: NodeTypes = useMemo(() => ({
-    equipmentNode: ReactFlowEquipmentNode,
+    equipmentNode: EquipmentNode,
     busNode: BusEquipmentNode,
   }), []);
 
@@ -60,6 +64,9 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
   const [menu, setMenu] = useState<{
     id: string;
     type: 'node' | 'edge';
+    node?: CustomFlowNode;
+    source?: Node;
+    target?: Node;
     top?: number | false;
     left?: number | false;
     right?: number | false;
@@ -133,6 +140,7 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
     setMenu({
       id: node.id,
       type: 'node',
+      node: node as CustomFlowNode, // Type assertion since we know this is our custom node
       top: event.clientY < pane.height - 200 && event.clientY - pane.top,
       left: event.clientX < pane.width - 200 && event.clientX - pane.left,
       right: event.clientX >= pane.width - 200 && pane.width - (event.clientX - pane.left),
@@ -152,6 +160,8 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
     setMenu({
       id: edge.id,
       type: 'edge',
+      source: nodes.find(n => n.id === edge.source),
+      target: nodes.find(n => n.id === edge.target),
       top: event.clientY < pane.height - 200 && event.clientY - pane.top,
       left: event.clientX < pane.width - 200 && event.clientX - pane.left,
       right: event.clientX >= pane.width - 200 && pane.width - (event.clientX - pane.left),
@@ -248,16 +258,17 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
         <Background />
         <SnapLinesOverlay snapLines={snapLines} />
         {menu && menu.type === 'node' && (
-          <ContextMenu
+          <NodeContextMenu
             id={menu.id}
             top={menu.top}
             left={menu.left}
             right={menu.right}
             bottom={menu.bottom}
-            equipmentList={equipmentList}
+            node={menu.node}
             onEdit={onEditEquipment}
             onDelete={onDeleteEquipment}
-            onClick={() => setMenu(null)}
+            onClose={() => setMenu(null)}
+            triggerRerender={triggerRerender}
           />
         )}
         {menu && menu.type === 'edge' && (

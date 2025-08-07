@@ -108,9 +108,16 @@ function Display({ equipmentList, setEquipmentList, handlePopoverOpen }: {
     }
   }
 
+  const triggerRerender = () => {
+    // Trigger a re-render by creating a new array reference
+    // Note this may use a stale equipmentList?
+    setEquipmentList([...equipmentList]);
+  }
+
   return (
     <ReactFlowLayoutEngine
       equipmentList={equipmentList}
+      triggerRerender={triggerRerender}
       onEditEquipment={handleEditEquipment}
       onDeleteEquipment={handleDeleteEquipment}
       onConnectEquipment={handleConnectEquipment}

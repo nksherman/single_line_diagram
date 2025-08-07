@@ -1,5 +1,5 @@
 import React from 'react';
-import { Handle, Position } from '@xyflow/react';
+import { Handle, Position, type Node } from '@xyflow/react';
 
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -10,8 +10,21 @@ import { getBaseEquipmentSize, calculateEquipmentDimensions, getTextGroups } fro
 import { getIconPath } from '../../../utils/iconUtils';
 import BusEquipmentNode from './busEquipmentNode';
 
+
+export interface EquipmentNodeData extends Record<string, unknown> {
+  equipment: EquipmentBase;
+  onEdit: (equipment: EquipmentBase) => void;
+  onResize?: (equipment: EquipmentBase, width: number, height: number) => void;
+}
+
+// Create typed versions of React Flow nodes
+export type EquipmentFlowNode = Node<EquipmentNodeData, 'equipmentNode'>;
+export type BusFlowNode = Node<EquipmentNodeData, 'busNode'>;
+export type CustomFlowNode = EquipmentFlowNode | BusFlowNode;
+
+
 // Custom node component props
-interface EquipmentNodeProps {
+export interface EquipmentNodeProps {
   data: {
     equipment: EquipmentBase;
     onEdit: (equipment: EquipmentBase) => void;
@@ -28,10 +41,6 @@ const EquipmentNode: React.FC<EquipmentNodeProps> = ({ data, selected }) => {
     return <BusEquipmentNode data={{ ...data, equipment: equipment as Bus }} selected={selected} />;
   }
   
-  const handleDoubleClick = () => {
-    onEdit(equipment);
-  };
-
   // Use the shared dimension calculation
   const equipmentDimensions = calculateEquipmentDimensions(equipment);
   const equipmentSize = getBaseEquipmentSize(equipment.type);
@@ -39,6 +48,7 @@ const EquipmentNode: React.FC<EquipmentNodeProps> = ({ data, selected }) => {
   const nodeWidth = equipmentDimensions.width;
   const textGroups = getTextGroups(equipment);
 
+  
   const getNodeColor = (type: string) => {
     switch (type.toLowerCase()) {
       case 'generator':
@@ -55,6 +65,55 @@ const EquipmentNode: React.FC<EquipmentNodeProps> = ({ data, selected }) => {
         return '#757575';
     }
   };
+
+  const logHandles = (customHandles: any, side: any) => {
+    console.log(`Equipment: ${equipment.name}, 
+      HandlesCustom: ${customHandles.length > 0 ? customHandles.map(h => h.id).join(', ') : 'None'}
+      else handleId: ${side}`);
+  };
+
+  const generateHandles = (sourceSide: boolean, side: 'top' | 'bottom') => {
+    const pos = side === 'top' ? Position.Top : Position.Bottom;
+
+    // Check if there are custom handles defined for this side
+    const customHandles = equipment.handles.filter(h => 
+      h.side === side && h.isSource === !sourceSide
+    );
+
+    // If custom handles exist, use them
+    if (customHandles.length > 0) {
+      return customHandles.map((handle) => (
+        <Handle
+          key={handle.id}
+          type={sourceSide ? 'target' : 'source'}
+          position={pos}
+          id={handle.id}
+          style={{ 
+            background: getNodeColor(equipment.type),
+            left: `${handle.positionPercent}%`,
+          }}
+        />
+      ));
+    }
+
+    // Default handle if no custom handles are defined
+    return (
+      <Handle
+        type={sourceSide ? 'target' : 'source'}
+        position={pos}
+        id={`${side}`}
+        style={{ 
+          background: getNodeColor(equipment.type),
+          left: '50%',
+        }}
+      />
+    );
+  };
+
+  const handleDoubleClick = () => {
+    onEdit(equipment);
+  };
+
 
   return (
     <Box
@@ -75,15 +134,9 @@ const EquipmentNode: React.FC<EquipmentNodeProps> = ({ data, selected }) => {
       }}
       onDoubleClick={handleDoubleClick}
     >
-      {/* Top handle for connections from sources */}
-      <Handle
-        type="target"
-        position={Position.Top}
-        id="top"
-        style={{ 
-          background: getNodeColor(equipment.type),
-        }}
-      />
+      { /* Generate top and bottom handles based on equipment type */}
+      {generateHandles(true, 'top')} {/* Source handles on top */}
+      {generateHandles(false, 'bottom')} {/* Target handles on bottom */}
       
       {/* Top text */}
       <Box>
@@ -273,15 +326,6 @@ const EquipmentNode: React.FC<EquipmentNodeProps> = ({ data, selected }) => {
         </Typography>
       )}
       </Box>
-      {/* Bottom handle for connections to loads */}
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="bottom"
-        style={{ 
-          background: getNodeColor(equipment.type),
-        }}
-      />
     </Box>
   );
 };

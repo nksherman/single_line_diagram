@@ -136,14 +136,27 @@ export function generateEdgesFromItems(items: LayoutNode[]): Array<{
   items.forEach(item => {
     item.loads.forEach((load, loadIndex) => {
       let sourceHandle = 'bottom';
-      if (item.type === 'Bus') {
+      // if the source has specific handles, use them
+      if (item.handles && item.handles.length > 0) {
+        const handle = item.handles.find(h => h.side === 'bottom' && h.isSource);
+        if (handle) {
+          sourceHandle = handle.id;
+          console.log(`Using custom handle for source: ${handle.id}`);
+        }
+      } else if (item.type === 'Bus') {
         sourceHandle = `bottom-${loadIndex}`;
       }
       
       // Determine target handle - for bus equipment, find which source index this connection represents
       let targetHandle = 'top';
       const targetItem = items.find(i => i.id === load.id);
-      if (targetItem?.type === 'Bus') {
+      if (targetItem?.handles && targetItem.handles.length > 0) {
+        const handle = targetItem.handles.find(h => h.side === 'top' && !h.isSource);
+        if (handle) {
+          targetHandle = handle.id;
+          console.log(`Using custom handle for target: ${handle.id}`);
+        }
+      } else if (targetItem?.type === 'Bus') {
         // Find the index of this source connection in the target bus's sources
         const targetSources = targetSourceMap.get(load.id) || [];
         const sourceIndex = targetSources.indexOf(item.id);

@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react';
-import { useNodeSnapping } from '../flowHooks/useNodeSnapping';
+import { useNodeSnapping } from '../nodeSnap/useNodeSnapping';
 import EquipmentBase from '../../../../models/equipmentBase';
 
 describe('useNodeSnapping', () => {

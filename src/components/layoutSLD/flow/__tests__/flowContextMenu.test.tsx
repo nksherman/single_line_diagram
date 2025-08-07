@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ReactFlowProvider } from '@xyflow/react';
-import ContextMenu from '../flowContextMenu';
+import ContextMenu from '../nodeContextMenu';
 import EquipmentBase from '../../../../models/equipmentBase';
 
 // Mock @xyflow/react

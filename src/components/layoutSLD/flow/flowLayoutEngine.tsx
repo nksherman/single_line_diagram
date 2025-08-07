@@ -21,10 +21,10 @@ import { calculateEquipmentDimensions } from '../../../utils/equipmentDimensions
 import { setUnsetEquipmentPositions, generateEdgesFromItems, type LayoutNode } from './flowLayoutAlgorithm';
 
 import { type CustomFlowNode } from './equipmentNode';
-import NodeContextMenu from './flowContextMenu';
-import EdgeContextMenu from './flowEdgeContextMenu';
-import { useNodeSnapping } from './flowHooks/useNodeSnapping';
-import SnapLinesOverlay from './SnapLinesOverlay';
+import NodeContextMenu from './nodeContextMenu';
+import EdgeContextMenu from './edgeContextMenu';
+import { useNodeSnapping } from './nodeSnap/useNodeSnapping';
+import SnapLinesOverlay from './nodeSnap/SnapLinesOverlay';
 
 /**
  *  This function takes a list of equipment and generates a layout for them.

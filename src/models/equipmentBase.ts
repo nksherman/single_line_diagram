@@ -1,4 +1,6 @@
-import type { EquipmentBaseData, EquipmentType, HandlePosition, HandleSide } from '../types/equipment.types';
+import { Position } from '@xyflow/react';
+
+import type { EquipmentBaseData, EquipmentType, HandlePosition } from '../types/equipment.types';
 
 /**
  * Property definition for equipment input forms
@@ -70,12 +72,17 @@ export class EquipmentBase {
 
   addSource(source: EquipmentBase): void {
     this._sources.add(source);
+
+    this.createHandle({thisSideIsSource: true, otherEquipment: source})
     source._loads.add(this);
+    source.createHandle({thisSideIsSource: false, otherEquipment: this});
   }
   
   addLoad(load: EquipmentBase): void {
     this._loads.add(load);
+    this.createHandle({thisSideIsSource: false, otherEquipment: load});
     load._sources.add(this);
+    load.createHandle({thisSideIsSource: true, otherEquipment: this});
   }
   
   removeSource(source: EquipmentBase): void {
@@ -140,6 +147,54 @@ export class EquipmentBase {
     // Remove existing handle with same ID if exists
     this._handles = this._handles.filter(h => h.id !== handle.id);
     this._handles.push({ ...handle });
+    
+    // Redistribute all handles on this side
+    if (this._handles.length > 1) {
+      this.redistributeHandlesOnSide(handle.side);
+    }
+  }
+
+  /**
+   * Redistribute handles evenly on a specific side
+   */
+  private redistributeHandlesOnSide(side: Position): void {
+    const handlesOnSide = this._handles.filter(h => h.side === side);
+    const count = handlesOnSide.length;
+    
+    if (count === 0) return;
+    
+    if (count === 1) {
+      // Single handle goes to center
+      handlesOnSide[0].positionPercent = 50;
+    } else {
+      // Multiple handles are distributed evenly
+      // For n handles: positions are at 100/(n+1), 200/(n+1), 300/(n+1), etc.
+      handlesOnSide.forEach((handle, index) => {
+        handle.positionPercent = ((index + 1) * 100) / (count + 1);
+      });
+    }
+  }
+
+  createHandle({thisSideIsSource, otherEquipment}: {thisSideIsSource: boolean, otherEquipment: EquipmentBase}) {
+    // Determine the side based on whether this is a source or target connection
+    // thisSideIsSource = true means this equipment acts as a source, so handle goes on bottom
+    // thisSideIsSource = false means this equipment acts as a target, so handle goes on top
+    const thisSide = thisSideIsSource ?  Position.Top :  Position.Bottom;
+   
+    // Get handles on the same side to determine the next index
+    const handlesOnThisSide = this._handles.filter(handle => handle.side === thisSide);
+    
+    // Create unique ID based on side and count
+    const sidePrefix = thisSideIsSource ? 'target' : 'source';
+    const newHandle: HandlePosition = {
+      id: `${sidePrefix}-${handlesOnThisSide.length + 1}`,
+      side: thisSide,
+      positionPercent: 50, // Will be redistributed in addHandle
+      connectedEquipmentId: otherEquipment.id,
+      isSource: !thisSideIsSource,
+    };
+
+    this.addHandle(newHandle);
   }
 
   /**
@@ -159,7 +214,7 @@ export class EquipmentBase {
   /**
    * Get handles by side
    */
-  getHandlesBySide(side: HandleSide): HandlePosition[] {
+  getHandlesBySide(side: Position): HandlePosition[] {
     return this._handles.filter(h => h.side === side);
   }
 

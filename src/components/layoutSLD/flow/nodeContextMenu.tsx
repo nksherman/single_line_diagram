@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import { useReactFlow, useStore } from '@xyflow/react';
-import type { Node } from '@xyflow/react';
+import { type Node, Position } from '@xyflow/react';
 import { Paper, MenuList, MenuItem, ListItemIcon, ListItemText, Divider } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -120,48 +120,47 @@ export default function NodeContextMenu({
     console.log('=== End Handle Positions ===');
   }, [node, nodes]);
 
-  const handleCycleHandlePosition = useCallback(() => {
+  const handleCycleHandlePosition = useCallback((side: Position) => {
     if (!equipment) {
       console.log('Handle cycling only available for equipment');
       return;
     }
     
-    // Get current custom handles for this bus
-    const currentHandles = equipment.handles;
-    const hasLeftHandle = currentHandles.some((h: any) => h.side === 'top' && h.positionPercent <= 20);
-    const hasRightHandle = currentHandles.some((h: any) => h.side === 'top' && h.positionPercent >= 80);
+    // Get current handles for the specified side
+    const handlesOnSide = equipment.handles.filter((h: any) => h.side === side);
     
-    // Cycle through states: none -> left -> right -> none
-    equipment.clearHandles();
-    
-    if (!hasLeftHandle && !hasRightHandle) {
-      // State: none -> add left corner handle
-      equipment.addHandle({
-        id: `top-left-1`,
-        side: 'top',
-        positionPercent: 10, // 10% from left edge
-        isSource: false, // Target handle (for incoming connections)
-      });
-      console.log('Added left corner handle');
-    } else if (hasLeftHandle && !hasRightHandle) {
-      // State: left -> add right corner handle (remove left)
-      equipment.addHandle({
-        id: `top-right-1`,
-        side: 'top',
-        positionPercent: 90, // 90% from left edge (near right edge)
-        isSource: false, // Target handle (for incoming connections)
-      });
-      console.log('Added right corner handle');
-    } else {
-      // State: right or both -> clear all (reset to default)
-      console.log('Cleared all custom handles - reset to default');
+    if (handlesOnSide.length !== 1) {
+      console.log(`Handle cycling requires exactly one handle on ${side} side. Found: ${handlesOnSide.length}`);
+      return;
     }
-
+    
+    const currentHandle = handlesOnSide[0];
+    const currentPosition = currentHandle.positionPercent;
+    
+    // Define position cycle: center (50%) -> left (10%) -> right (90%) -> center
+    let newPosition: number;
+    
+    if (currentPosition === 50) {
+      newPosition = 10; // center -> left
+    } else if (currentPosition === 10) {
+      newPosition = 90; // left -> right  
+    } else {
+      newPosition = 50; // right or any other -> center
+    }
+    
+    // Add the same handle with new position
+    equipment.addHandle({
+      ...currentHandle,
+      positionPercent: newPosition,
+    });
+    
+    console.log(`Cycled handle position from ${currentPosition}% to ${newPosition}%`);
+    
     // Force a re-render by updating the nodes
     triggerRerender?.();
-
+    
     onClose(); // Close menu
-  }, [equipment, setNodes, onClose]);
+  }, [equipment, triggerRerender, onClose]);
 
   const handleDelete = useCallback(() => {
     if (equipment && onDelete) {
@@ -205,7 +204,7 @@ export default function NodeContextMenu({
           <ListItemText primary="Log Handles" />
         </MenuItem>
         <Divider key="handle-divider" />
-        <MenuItem key="handle-cycle" onClick={handleCycleHandlePosition}>
+        <MenuItem key="handle-cycle" onClick={() =>handleCycleHandlePosition(Position.Top)}>
           <ListItemIcon>
             <TouchAppIcon fontSize="small" />
           </ListItemIcon>

@@ -10,6 +10,7 @@ import { getBaseEquipmentSize, calculateEquipmentDimensions, getTextGroups } fro
 import { getIconPath } from '../../../utils/iconUtils';
 import BusEquipmentNode from './busEquipmentNode';
 
+import { type HandlePosition } from '../../../types/equipment.types';
 
 export interface EquipmentNodeData extends Record<string, unknown> {
   equipment: EquipmentBase;
@@ -66,27 +67,24 @@ const EquipmentNode: React.FC<EquipmentNodeProps> = ({ data, selected }) => {
     }
   };
 
-  const logHandles = (customHandles: any, side: any) => {
-    console.log(`Equipment: ${equipment.name}, 
-      HandlesCustom: ${customHandles.length > 0 ? customHandles.map(h => h.id).join(', ') : 'None'}
-      else handleId: ${side}`);
-  };
 
-  const generateHandles = (sourceSide: boolean, side: 'top' | 'bottom') => {
-    const pos = side === 'top' ? Position.Top : Position.Bottom;
+  const generateHandlesFinal = () => {
+    const handleObj = equipment.handles.reduce((acc: Record<string, any>, handle: HandlePosition) => {
+      const side = handle.side;
+      if (!acc[side]) {
+        acc[side] = [];
+      }
+      acc[side].push(handle);
+      return acc;
+    }, {});
 
-    // Check if there are custom handles defined for this side
-    const customHandles = equipment.handles.filter(h => 
-      h.side === side && h.isSource === !sourceSide
-    );
-
-    // If custom handles exist, use them
-    if (customHandles.length > 0) {
-      return customHandles.map((handle) => (
+    // Flatten the handles from all sides into a single array
+    const theseHandles: React.ReactElement[] = Object.entries(handleObj).flatMap(([side, handles]) => {
+      return handles.map((handle: any) => (
         <Handle
           key={handle.id}
-          type={sourceSide ? 'target' : 'source'}
-          position={pos}
+          type={handle.isSource ? 'source' : 'target'}
+          position={side as Position}
           id={handle.id}
           style={{ 
             background: getNodeColor(equipment.type),
@@ -94,21 +92,46 @@ const EquipmentNode: React.FC<EquipmentNodeProps> = ({ data, selected }) => {
           }}
         />
       ));
-    }
+    });
 
-    // Default handle if no custom handles are defined
-    return (
+  // Check if we have any source handles
+  const hasSourceHandle = theseHandles.some((handle: any) => handle.props.type === 'source');
+  // Add at least one type=source handle in the middle if none exists
+  if (!hasSourceHandle) {
+    theseHandles.push(
       <Handle
-        type={sourceSide ? 'target' : 'source'}
-        position={pos}
-        id={`${side}`}
-        style={{ 
+        key={`source-default`}
+        type="source"
+        position={Position.Bottom}
+        id={`source-default`}
+        style={{
           background: getNodeColor(equipment.type),
           left: '50%',
         }}
       />
     );
-  };
+  }
+  
+  // Check if we have any target handles
+  const hasTargetHandle = theseHandles.some((handle: any) => handle.props.type === 'target');
+  if (!hasTargetHandle) {
+    theseHandles.push(
+      <Handle
+        key={`target-default`}
+        type="target"
+        position={Position.Top}
+        id={`target-default`}
+        style={{
+          background: getNodeColor(equipment.type),
+          left: '50%',
+        }}
+      />
+    );
+  }
+
+  return theseHandles;
+};
+    
 
   const handleDoubleClick = () => {
     onEdit(equipment);
@@ -135,8 +158,7 @@ const EquipmentNode: React.FC<EquipmentNodeProps> = ({ data, selected }) => {
       onDoubleClick={handleDoubleClick}
     >
       { /* Generate top and bottom handles based on equipment type */}
-      {generateHandles(true, 'top')} {/* Source handles on top */}
-      {generateHandles(false, 'bottom')} {/* Target handles on bottom */}
+      {generateHandlesFinal()}
       
       {/* Top text */}
       <Box>

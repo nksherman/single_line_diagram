@@ -5,6 +5,8 @@ import EquipmentBase from '../../../models/equipmentBase';
 import Bus from '../../../models/busEquipment';
 import { getBaseEquipmentSize, calculateEquipmentDimensions, getTextGroups } from '../../../utils/equipmentDimensions';
 
+import { type HandlePosition } from '../../../types/equipment.types';
+
 // Bus equipment node component props
 interface BusEquipmentNodeProps {
   data: {
@@ -38,35 +40,48 @@ const BusEquipmentNode: React.FC<BusEquipmentNodeProps> = ({ data, selected }) =
 
   const getBusColor = () => '#9C27B0'; // Purple color for bus
 
-  // Generate handles for bus equipment
-  const generateBusHandles = (sourceSide: boolean, side: 'top' | 'bottom') => {
-    const pos = side === 'top' ? Position.Top : Position.Bottom;
+  const generateHandlesFinal = () => {
+    // the equipment as type Bus
+    const busEquipment = equipment as Bus;
 
-    let handlesCount = 0;
-    if (sourceSide) {
-      handlesCount = equipment.sources?.size || 1;
-    } else {
-      handlesCount = equipment.loads?.size || 1;
-    }
-    
-    const handles = [];
-    for (let i = 0; i < handlesCount; i++) {
-      handles.push(
+    if (!busEquipment.handles || busEquipment.handles.length === 0) {
+      // If no custom handles are defined, return a default handle
+      return (
         <Handle
-          key={`${side}-${i}`}
-          type={sourceSide ? 'target' : 'source'}
-          position={pos}
-          id={`${side}-${i}`}
-          style={{ 
-            background: getBusColor(),
-            left: `${((i + 1) / (handlesCount + 1)) * 100}%`,
-          }}
+          type="source"
+          position={Position.Bottom}
+          id="default-handle"
+          style={{ background: getBusColor(), left: '50%' }}
         />
       );
     }
-    
-    return handles;
+
+    const handleObj = equipment.handles.reduce((acc: Record<string, any>, handle: HandlePosition) => {
+      const side = handle.side;
+      if (!acc[side]) {
+        acc[side] = [];
+      }
+      acc[side].push(handle);
+      return acc;
+    }, {});
+
+    // Generate handles based on the custom positions
+    return Object.entries(handleObj).map(([side, handles]) => {
+      return handles.map((handle: any) => (
+        <Handle
+          key={handle.id}
+          type={handle.isSource ? 'source' : 'target'}
+          position={side as Position}
+          id={handle.id}
+          style={{ 
+            background: getBusColor(),
+            left: `${handle.positionPercent}%`,
+          }}
+        />
+      ));
+    });
   };
+    
 
   return (
     <Box
@@ -108,8 +123,7 @@ const BusEquipmentNode: React.FC<BusEquipmentNodeProps> = ({ data, selected }) =
         }}
       />
       
-      {/* Top handles for connections from sources */}
-      {generateBusHandles(true, 'top')}
+      {generateHandlesFinal()}
       
       {/* Top text - only text area for bus equipment */}
       <Box>
@@ -207,9 +221,6 @@ const BusEquipmentNode: React.FC<BusEquipmentNodeProps> = ({ data, selected }) =
           </Typography>
         )}
       </Box>
-
-      {/* Bottom handles for connections to loads */}
-      {generateBusHandles(false, 'bottom')}
     </Box>
   );
 };

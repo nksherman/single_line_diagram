@@ -44,6 +44,15 @@ export interface LayoutNode {
   handles?: HandlePosition[]; // Handle positions for this equipment
 }
 
+
+export interface EdgeParams {
+  id: string;
+  source: string;
+  target: string;
+  sourceHandle?: string;
+  targetHandle?: string;
+}
+
 export interface LayoutOptions {
   vertSpace?: number;
   nodeSpacing?: number;
@@ -105,26 +114,16 @@ export function buildDependencyGraph(items: LayoutNode[]): DependencyGraph {
 }
 
 
-export function generateEdgesFromItems(items: LayoutNode[]): Array<{
-  id: string;
-  source: string;
-  target: string;
-  sourceHandle?: string;
-  targetHandle?: string;
-}> {
-  const edges: Array<{ 
-    id: string; 
-    source: string; 
-    target: string;
-    sourceHandle?: string;
-    targetHandle?: string;
-  }> = [];
-  
+export function generateEdgesFromItems(items: LayoutNode[]): EdgeParams[] {
+  const edges: EdgeParams[] = [];
+
   // Create a map to track source connections for each target node
   const targetSourceMap = new Map<string, string[]>();
   
   // First pass: build the map of all connections
   items.forEach(item => {
+
+    item.handles
     item.loads.forEach(load => {
       if (!targetSourceMap.has(load.id)) {
         targetSourceMap.set(load.id, []);
@@ -135,38 +134,26 @@ export function generateEdgesFromItems(items: LayoutNode[]): Array<{
 
   items.forEach(item => {
     item.loads.forEach((load, loadIndex) => {
-      let sourceHandle = 'bottom';
-      // if the source has specific handles, use them
-      if (item.handles && item.handles.length > 0) {
-        const handle = item.handles.find(h => h.side === 'bottom' && h.isSource);
-        if (handle) {
-          sourceHandle = handle.id;
-          console.log(`Using custom handle for source: ${handle.id}`);
-        }
-      } else if (item.type === 'Bus') {
-        sourceHandle = `bottom-${loadIndex}`;
+      // Generate source handle ID based on equipment type and load index
+      let sourceHandle = 'source-1';
+      if (item.type === 'Bus' || item.loads.length > 1) {
+        sourceHandle = `source-${loadIndex+1}`;
       }
       
-      // Determine target handle - for bus equipment, find which source index this connection represents
-      let targetHandle = 'top';
+      // Generate target handle ID based on source index for this target
+      let targetHandle = 'target-1';
+      const targetSources = targetSourceMap.get(load.id) || [];
+      const sourceIndex = targetSources.indexOf(item.id);
+      
       const targetItem = items.find(i => i.id === load.id);
-      if (targetItem?.handles && targetItem.handles.length > 0) {
-        const handle = targetItem.handles.find(h => h.side === 'top' && !h.isSource);
-        if (handle) {
-          targetHandle = handle.id;
-          console.log(`Using custom handle for target: ${handle.id}`);
-        }
-      } else if (targetItem?.type === 'Bus') {
-        // Find the index of this source connection in the target bus's sources
-        const targetSources = targetSourceMap.get(load.id) || [];
-        const sourceIndex = targetSources.indexOf(item.id);
+      if (targetItem?.type === 'Bus' || targetSources.length > 1) {
         if (sourceIndex >= 0) {
-          targetHandle = `top-${sourceIndex}`;
+          targetHandle = `target-${sourceIndex+1}`;
         }
       }
-      
+
       edges.push({
-        id: `${item.id}-${load.id}`,
+        id: `${item.id}(${sourceHandle})-${load.id}(${targetHandle})`,
         source: item.id,
         target: load.id,
         sourceHandle,
@@ -177,7 +164,6 @@ export function generateEdgesFromItems(items: LayoutNode[]): Array<{
 
   return edges;
 }
-
 // ==============================================================================
 // COLLISION DETECTION AND SPACE MANAGEMENT
 // ==============================================================================

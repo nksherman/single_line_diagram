@@ -1,18 +1,16 @@
+
+import { Position } from '@xyflow/react';
+
 /**
  * Type definitions for the equipment system
  */
-
-/**
- * Handle position side enumeration
- */
-export type HandleSide = 'top' | 'bottom' | 'left' | 'right';
 
 /**
  * Handle position data for equipment connections
  */
 export interface HandlePosition {
   id: string; // Unique identifier for this handle
-  side: HandleSide; // Which side of the equipment (top/bottom/left/right)
+  side: Position; // Which side of the equipment (top/bottom/left/right)
   positionPercent: number; // Distance from top-left/bottom-right corner as percentage (0-100)
   connectedEquipmentId?: string; // ID of equipment this handle connects to
   isSource: boolean; // True if this is a source handle, false if load handle

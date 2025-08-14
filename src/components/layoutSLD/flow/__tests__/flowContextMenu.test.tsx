@@ -41,6 +41,7 @@ describe('ContextMenu', () => {
     id: 'TEST-01',
     equipmentList: [mockEquipment],
     onClick: mockOnClick,
+    onClose: jest.fn(),
     top: 100,
     left: 50,
   });

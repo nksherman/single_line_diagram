@@ -149,7 +149,7 @@ export class EquipmentBase {
     this._handles.push({ ...handle });
     
     // Redistribute all handles on this side
-    if (this._handles.length > 1) {
+    if (this._handles.length > 1) { 
       this.redistributeHandlesOnSide(handle.side);
     }
   }
@@ -196,7 +196,6 @@ export class EquipmentBase {
 
     this.addHandle(newHandle);
   }
-
   /**
    * Remove a handle by ID
    */

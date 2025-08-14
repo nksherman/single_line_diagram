@@ -120,48 +120,6 @@ export default function NodeContextMenu({
     console.log('=== End Handle Positions ===');
   }, [node, nodes]);
 
-  const handleCycleHandlePosition = useCallback((side: Position) => {
-    if (!equipment) {
-      console.log('Handle cycling only available for equipment');
-      return;
-    }
-    
-    // Get current handles for the specified side
-    const handlesOnSide = equipment.handles.filter((h: any) => h.side === side);
-    
-    if (handlesOnSide.length !== 1) {
-      console.log(`Handle cycling requires exactly one handle on ${side} side. Found: ${handlesOnSide.length}`);
-      return;
-    }
-    
-    const currentHandle = handlesOnSide[0];
-    const currentPosition = currentHandle.positionPercent;
-    
-    // Define position cycle: center (50%) -> left (10%) -> right (90%) -> center
-    let newPosition: number;
-    
-    if (currentPosition === 50) {
-      newPosition = 10; // center -> left
-    } else if (currentPosition === 10) {
-      newPosition = 90; // left -> right  
-    } else {
-      newPosition = 50; // right or any other -> center
-    }
-    
-    // Add the same handle with new position
-    equipment.addHandle({
-      ...currentHandle,
-      positionPercent: newPosition,
-    });
-    
-    console.log(`Cycled handle position from ${currentPosition}% to ${newPosition}%`);
-    
-    // Force a re-render by updating the nodes
-    triggerRerender?.();
-    
-    onClose(); // Close menu
-  }, [equipment, triggerRerender, onClose]);
-
   const handleDelete = useCallback(() => {
     if (equipment && onDelete) {
       // Call parent delete handler to remove from equipment list
@@ -202,13 +160,6 @@ export default function NodeContextMenu({
             <InfoIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText primary="Log Handles" />
-        </MenuItem>
-        <Divider key="handle-divider" />
-        <MenuItem key="handle-cycle" onClick={() =>handleCycleHandlePosition(Position.Top)}>
-          <ListItemIcon>
-            <TouchAppIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText primary="Cycle Handle Position" />
         </MenuItem>
         <Divider />
         <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>

@@ -67,18 +67,33 @@ const BusEquipmentNode: React.FC<BusEquipmentNodeProps> = ({ data, selected }) =
 
     // Generate handles based on the custom positions
     return Object.entries(handleObj).map(([side, handles]) => {
-      return handles.map((handle: any) => (
-        <Handle
-          key={handle.id}
-          type={handle.isSource ? 'source' : 'target'}
-          position={side as Position}
-          id={handle.id}
-          style={{ 
-            background: getBusColor(),
-            left: `${handle.positionPercent}%`,
-          }}
-        />
-      ));
+      return handles.map((handle: any) => {
+        // Determine the correct positioning style based on handle side
+        const positionStyle: React.CSSProperties = {
+          background: getBusColor(),
+        };
+        
+        // For top/bottom handles, use left positioning
+        // For left/right handles, use top positioning
+        if (side === Position.Top || side === Position.Bottom) {
+          positionStyle.left = `${handle.positionPercent}%`;
+        } else if (side === Position.Left || side === Position.Right) {
+          positionStyle.top = `${handle.positionPercent}%`;
+        } else {
+          // Fallback for any other position
+          positionStyle.left = `${handle.positionPercent}%`;
+        }
+        
+        return (
+          <Handle
+            key={handle.id}
+            type={handle.isSource ? 'source' : 'target'}
+            position={side as Position}
+            id={handle.id}
+            style={positionStyle}
+          />
+        );
+      });
     });
   };
     

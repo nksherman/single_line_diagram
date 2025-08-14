@@ -1,16 +1,14 @@
 import { useCallback, useEffect } from 'react';
 import { useReactFlow, useStore } from '@xyflow/react';
-import { type Node, Position } from '@xyflow/react';
 import { Paper, MenuList, MenuItem, ListItemIcon, ListItemText, Divider } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import InfoIcon from '@mui/icons-material/Info';
-import TouchAppIcon from '@mui/icons-material/TouchApp';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 
 import { type CustomFlowNode } from './equipmentNode';
 
 import EquipmentBase from '../../../models/equipmentBase';
-import Bus from '../../../models/busEquipment';
 
 interface ContextMenuProps {
   id: string;
@@ -120,6 +118,41 @@ export default function NodeContextMenu({
     console.log('=== End Handle Positions ===');
   }, [node, nodes]);
 
+  const handleMoveHandles = useCallback(() => {
+    if (!equipment) {
+      console.log('No equipment available for handle movement');
+      return;
+    }
+
+    console.log('Moving handles for equipment:', equipment.name);
+    console.log('Current handles:', equipment.handles);
+
+    // Move all handles by adjusting their positionPercent
+    // For demonstration, we'll shift all handles by 15% (cycling between positions)
+    equipment.handles.forEach((handle) => {
+      // Move handle position by 15%, wrapping around at 85%
+      const currentPercent = handle.positionPercent;
+      let newPercent = currentPercent + 15;
+      
+      // Keep handles within reasonable bounds (15% to 85%)
+      if (newPercent > 85) {
+        newPercent = 15;
+      }
+      
+      handle.positionPercent = newPercent;
+      console.log(`Moved handle ${handle.id} from ${currentPercent}% to ${newPercent}% on side ${handle.side}`);
+    });
+
+    console.log('Updated handles:', equipment.handles);
+
+    // Trigger a re-render to see the changes
+    if (triggerRerender) {
+      triggerRerender();
+    }
+
+    onClose(); // Close menu
+  }, [equipment, triggerRerender, onClose]);
+
   const handleDelete = useCallback(() => {
     if (equipment && onDelete) {
       // Call parent delete handler to remove from equipment list
@@ -153,6 +186,13 @@ export default function NodeContextMenu({
             <EditIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText primary="Edit" />
+        </MenuItem>
+        <Divider />
+        <MenuItem onClick={handleMoveHandles} disabled={!equipment || equipment.handles.length === 0}>
+          <ListItemIcon>
+            <SwapHorizIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary="Move Handles" />
         </MenuItem>
         <Divider />
         <MenuItem onClick={handleLogHandles}>

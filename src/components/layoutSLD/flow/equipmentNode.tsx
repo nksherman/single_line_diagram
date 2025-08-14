@@ -80,18 +80,33 @@ const EquipmentNode: React.FC<EquipmentNodeProps> = ({ data, selected }) => {
 
     // Flatten the handles from all sides into a single array
     const theseHandles: React.ReactElement[] = Object.entries(handleObj).flatMap(([side, handles]) => {
-      return handles.map((handle: any) => (
-        <Handle
-          key={handle.id}
-          type={handle.isSource ? 'source' : 'target'}
-          position={side as Position}
-          id={handle.id}
-          style={{ 
-            background: getNodeColor(equipment.type),
-            left: `${handle.positionPercent}%`,
-          }}
-        />
-      ));
+      return handles.map((handle: any) => {
+        // Determine the correct positioning style based on handle side
+        const positionStyle: React.CSSProperties = {
+          background: getNodeColor(equipment.type),
+        };
+        
+        // For top/bottom handles, use left positioning
+        // For left/right handles, use top positioning
+        if (side === Position.Top || side === Position.Bottom) {
+          positionStyle.left = `${handle.positionPercent}%`;
+        } else if (side === Position.Left || side === Position.Right) {
+          positionStyle.top = `${handle.positionPercent}%`;
+        } else {
+          // Fallback for any other position
+          positionStyle.left = `${handle.positionPercent}%`;
+        }
+        
+        return (
+          <Handle
+            key={handle.id}
+            type={handle.isSource ? 'source' : 'target'}
+            position={side as Position}
+            id={handle.id}
+            style={positionStyle}
+          />
+        );
+      });
     });
 
   // Check if we have any source handles

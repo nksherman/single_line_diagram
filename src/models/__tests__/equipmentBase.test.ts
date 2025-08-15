@@ -255,6 +255,15 @@ describe('EquipmentBase', () => {
       const jsonData = generator.toJSON();
       
       expect(jsonData).toEqual({
+        "handles": [
+          {
+            "connectedEquipmentId": "XFMR-01",
+            "id": "source-1",
+            'isSource': true,
+            "positionPercent": 50,
+            "side": "bottom"
+          }
+        ],
         id: 'GEN-01',
         name: 'Main Generator',
         type: 'Generator',

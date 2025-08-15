@@ -136,6 +136,7 @@ describe('Generator Equipment', () => {
         type: 'Generator',
         sourceIds: [],
         loadIds: [],
+        handles: [],
         position: { x: 0, y: 0 },
         capacity: 25.0,
         voltage: 13.8,

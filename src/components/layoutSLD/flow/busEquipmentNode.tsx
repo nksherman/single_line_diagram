@@ -41,21 +41,6 @@ const BusEquipmentNode: React.FC<BusEquipmentNodeProps> = ({ data, selected }) =
   const getBusColor = () => '#9C27B0'; // Purple color for bus
 
   const generateHandlesFinal = () => {
-    // the equipment as type Bus
-    const busEquipment = equipment as Bus;
-
-    if (!busEquipment.handles || busEquipment.handles.length === 0) {
-      // If no custom handles are defined, return a default handle
-      return (
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          id="default-handle"
-          style={{ background: getBusColor(), left: '50%' }}
-        />
-      );
-    }
-
     const handleObj = equipment.handles.reduce((acc: Record<string, any>, handle: HandlePosition) => {
       const side = handle.side;
       if (!acc[side]) {
@@ -64,9 +49,9 @@ const BusEquipmentNode: React.FC<BusEquipmentNodeProps> = ({ data, selected }) =
       acc[side].push(handle);
       return acc;
     }, {});
-
-    // Generate handles based on the custom positions
-    return Object.entries(handleObj).map(([side, handles]) => {
+  
+    // Flatten the handles from all sides into a single array
+    const theseHandles: React.ReactElement[] = Object.entries(handleObj).flatMap(([side, handles]) => {
       return handles.map((handle: any) => {
         // Determine the correct positioning style based on handle side
         const positionStyle: React.CSSProperties = {
@@ -95,8 +80,46 @@ const BusEquipmentNode: React.FC<BusEquipmentNodeProps> = ({ data, selected }) =
         );
       });
     });
-  };
+  
+    // Check if we have any source handles
+    const hasSourceHandle = theseHandles.some((handle: any) => handle.props.type === 'source');
+    // Add at least one type=source handle in the middle if none exists
+    if (!hasSourceHandle) {
+      theseHandles.push(
+        <Handle
+          key={`source-default`}
+          type="source"
+          position={Position.Bottom}
+          id={`source-default`}
+          style={{
+            background: getBusColor(),
+            left: '50%',
+          }}
+        />
+      );
+    }
     
+    // Check if we have any target handles
+    const hasTargetHandle = theseHandles.some((handle: any) => handle.props.type === 'target');
+    if (!hasTargetHandle) {
+      theseHandles.push(
+        <Handle
+          key={`target-default`}
+          type="target"
+          position={Position.Top}
+          id={`target-default`}
+          style={{
+            background: getBusColor(),
+            left: '50%',
+          }}
+        />
+      );
+    }
+  
+    return theseHandles;
+  };
+  
+  // ...existing code...
 
   return (
     <Box

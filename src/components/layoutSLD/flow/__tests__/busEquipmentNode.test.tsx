@@ -69,9 +69,9 @@ describe('BusEquipmentNode', () => {
     renderComponent();
     
     // Should have handles for sources (top) and loads (bottom)
-    const topHandles = document.querySelectorAll('[data-handleid^="top-"]');
-    const bottomHandles = document.querySelectorAll('[data-handleid^="bottom-"]');
-    
+    const topHandles = document.querySelectorAll('[data-handleid^="target"]');
+    const bottomHandles = document.querySelectorAll('[data-handleid^="source"]');
+
     expect(topHandles.length).toBe(1); // One source
     expect(bottomHandles.length).toBe(1); // One load
   });
@@ -86,8 +86,8 @@ describe('BusEquipmentNode', () => {
     
     renderComponent();
     
-    const topHandles = document.querySelectorAll('[data-handleid^="top-"]');
-    const bottomHandles = document.querySelectorAll('[data-handleid^="bottom-"]');
+    const topHandles = document.querySelectorAll('[data-handleid^="target"]');
+    const bottomHandles = document.querySelectorAll('[data-handleid^="source"]');
     
     expect(topHandles.length).toBe(2); // Two sources
     expect(bottomHandles.length).toBe(2); // Two loads
@@ -107,8 +107,8 @@ describe('BusEquipmentNode', () => {
     renderComponent(emptyBus);
     
     // Should still render with default single handle
-    const topHandles = document.querySelectorAll('[data-handleid^="top-"]');
-    const bottomHandles = document.querySelectorAll('[data-handleid^="bottom-"]');
+    const topHandles = document.querySelectorAll('[data-handleid="target-default"]');
+    const bottomHandles = document.querySelectorAll('[data-handleid="source-default"]');
     
     expect(topHandles.length).toBe(1); // Default single handle
     expect(bottomHandles.length).toBe(1); // Default single handle
@@ -124,7 +124,7 @@ describe('BusEquipmentNode', () => {
     
     renderComponent();
     
-    const topHandles = document.querySelectorAll('[data-handleid^="top-"]');
+    const topHandles = document.querySelectorAll('[data-handleid^="target-"]');
     expect(topHandles.length).toBe(3); // Three sources
     
     // Check that handles have different left positions
@@ -157,7 +157,7 @@ describe('BusEquipmentNode', () => {
     renderComponent();
     
     // Should still render the main structure without text
-    expect(document.querySelectorAll('[data-handleid^="top-"]').length).toBeGreaterThan(0);
-    expect(document.querySelectorAll('[data-handleid^="bottom-"]').length).toBeGreaterThan(0);
+    expect(document.querySelectorAll('[data-handleid^="source-"]').length).toBeGreaterThan(0);
+    expect(document.querySelectorAll('[data-handleid^="target-"]').length).toBeGreaterThan(0);
   });
 });

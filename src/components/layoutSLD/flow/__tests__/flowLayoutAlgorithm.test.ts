@@ -79,19 +79,19 @@ describe('Flow Layout Algorithm', () => {
       expect(edges).toHaveLength(2);
       
       expect(edges[0]).toEqual({
-        id: 'GEN-01-BUS-01',
+        id: 'GEN-01(source-1)-BUS-01(target-1)',
         source: 'GEN-01',
         target: 'BUS-01',
-        sourceHandle: 'bottom',
-        targetHandle: 'top-0',
+        sourceHandle: 'source-1',
+        targetHandle: 'target-1',
       });
       
       expect(edges[1]).toEqual({
         id: 'BUS-01-LOAD-01',
         source: 'BUS-01',
         target: 'LOAD-01',
-        sourceHandle: 'bottom-0',
-        targetHandle: 'top',
+        sourceHandle: 'source-1',
+        targetHandle: 'target-1',
       });
     });
 

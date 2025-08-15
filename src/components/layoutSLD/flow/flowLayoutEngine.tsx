@@ -215,6 +215,13 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
     // else use the node
     if (targetNode.id == params.fromNode.id) {
       //user dragged to the same node, reposition this handle
+    } else {
+      // user dragged to a different node, create a new connection
+
+      // we should automatically assign source
+      params.target = targetNode.id;
+
+
     }
 
   }, [findNodeByPosition])

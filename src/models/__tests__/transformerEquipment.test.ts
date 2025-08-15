@@ -178,6 +178,7 @@ describe('Transformer Equipment', () => {
         id: 'XFMR-01',
         name: 'Main Transformer',
         type: 'Transformer',
+        handles: [],
         sourceIds: [],
         loadIds: [],
         position: { x: 0, y: 0 },

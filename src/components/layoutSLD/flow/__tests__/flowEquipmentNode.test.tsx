@@ -52,10 +52,10 @@ describe('ReactFlowEquipmentNode', () => {
 
   test('renders equipment node with correct structure', () => {
     renderComponent();
-    
-    // Check if React Flow handles are rendered
-    expect(document.querySelector('[data-handleid="top"]')).toBeInTheDocument();
-    expect(document.querySelector('[data-handleid="bottom"]')).toBeInTheDocument();
+
+
+    expect(document.querySelector('[data-handleid="target-default"]')).toBeInTheDocument();
+    expect(document.querySelector('[data-handleid="source-default"]')).toBeInTheDocument();
   });
 
   test('displays equipment text groups correctly', () => {
@@ -76,9 +76,9 @@ describe('ReactFlowEquipmentNode', () => {
     renderComponent();
     
     // Check if handles have the correct color style
-    const topHandle = document.querySelector('[data-handleid="top"]');
-    const bottomHandle = document.querySelector('[data-handleid="bottom"]');
-    
+    const topHandle = document.querySelector('[data-handleid="source-default"]');
+    const bottomHandle = document.querySelector('[data-handleid="target-default"]');
+
     expect(topHandle).toHaveStyle('background: #4CAF50'); // Generator color
     expect(bottomHandle).toHaveStyle('background: #4CAF50');
   });
@@ -86,10 +86,11 @@ describe('ReactFlowEquipmentNode', () => {
   test('handles equipment with different types', () => {
     const transformerEquipment = new EquipmentBase('T-01', 'Test Transformer', 'Transformer');
     renderComponent(transformerEquipment);
-    
-    const topHandle = document.querySelector('[data-handleid="top"]');
-    const bottomHandle = document.querySelector('[data-handleid="bottom"]');
-    
+
+
+    const topHandle = document.querySelector('[data-handleid="source-default"]');
+    const bottomHandle = document.querySelector('[data-handleid="target-default"]');
+
     expect(topHandle).toHaveStyle('background: #FF9800'); // Transformer color
     expect(bottomHandle).toHaveStyle('background: #FF9800');
   });
@@ -134,7 +135,7 @@ describe('ReactFlowEquipmentNode', () => {
     renderComponent();
     
     // Should still render the main structure without text
-    expect(document.querySelector('[data-handleid="top"]')).toBeInTheDocument();
-    expect(document.querySelector('[data-handleid="bottom"]')).toBeInTheDocument();
+    expect(document.querySelector('[data-handleid="target-default"]')).toBeInTheDocument();
+    expect(document.querySelector('[data-handleid="source-default"]')).toBeInTheDocument();
   });
 });

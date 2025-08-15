@@ -1,11 +1,13 @@
 import React, { useCallback, useMemo, useEffect, useState, useRef } from 'react';
 import {
   ReactFlow,
+  ReactFlowProvider,
   useNodesState,
   useEdgesState,
   Controls,
   Background,
   ConnectionMode,
+  useReactFlow,
 } from '@xyflow/react';
 import type { Node, Edge, NodeTypes } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -40,7 +42,7 @@ export interface FlowLayoutEngineProps {
   onDeleteConnection?: (sourceId: string, targetId: string) => void;
 }
 
-const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
+const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
   equipmentList,
   triggerRerender,
   onEditEquipment,
@@ -48,6 +50,9 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
   onConnectEquipment,
   onDeleteConnection,
 }) => {
+  // You can access the internal React Flow state here
+  const reactFlowInstance = useReactFlow(); // eslint-disable-line @typescript-eslint/no-unused-vars
+
   const vertSpace = 120; // vertical space between nodes
   const nodeSpacing = 10; // horizontal space between nodes
   const margin = 50; // margin around the edges
@@ -84,7 +89,8 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
   });
 
   // Handle equipment resize
-  const handleEquipmentResize = useCallback((equipment: EquipmentBase, width: number, _height: number) => {
+  const handleEquipmentResize = useCallback((equipment: EquipmentBase, width: number, _: number) => {
+    // height ignored because we use this for buses
     setNodes((currentNodes) => 
       currentNodes.map((node) => {
         if (node.id === equipment.id) {
@@ -100,76 +106,6 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
       })
     );
   }, [setNodes]);
-
-  const handleConnect = useCallback((params: any) => {
-    // Delegate to parent component to handle connection logic and state updates
-    if (onConnectEquipment) {
-      onConnectEquipment(params.source, params.target);
-    } else {
-      // Fallback: basic connection without state update
-      console.warn('No onConnectEquipment handler provided');
-    }
-  }, [onConnectEquipment]);
-
-  const handleDeleteEdge = useCallback((edgeId: string) => {
-    // Parse the edge ID to get source and target
-    // Edge IDs are typically in format "source-target" based on the generateEdgesFromItems function
-    const edge = edges.find(e => e.id === edgeId);
-
-    const {source, target} = edge || {};
-    if (!source || !target) {
-      console.warn(`Edge with ID ${edgeId} not found or invalid.`);
-      return;
-    }
-    if (edge && onDeleteConnection) {
-      onDeleteConnection(source, target);
-    } else {
-      console.warn(`Edge with ID ${edgeId} not found or no onDeleteConnection handler provided.`, edge);
-    }
-  }, [edges, onDeleteConnection, setEdges]);
-
-  const handleNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
-    // Prevent native context menu from showing
-    event.preventDefault();
-
-    // Calculate position of the context menu. We want to make sure it
-    // doesn't get positioned off-screen.
-    const pane = ref.current?.getBoundingClientRect();
-    if (!pane) return;
-
-    setMenu({
-      id: node.id,
-      type: 'node',
-      node: node as CustomFlowNode, // Type assertion since we know this is our custom node
-      top: event.clientY < pane.height - 200 && event.clientY - pane.top,
-      left: event.clientX < pane.width - 200 && event.clientX - pane.left,
-      right: event.clientX >= pane.width - 200 && pane.width - (event.clientX - pane.left),
-      bottom: event.clientY >= pane.height - 200 && pane.height - (event.clientY - pane.top),
-    });
-  }, [setMenu]);
-
-  const handleEdgeContextMenu = useCallback((event: React.MouseEvent, edge: Edge) => {
-    // Prevent native context menu from showing
-    event.preventDefault();
-
-    // Calculate position of the context menu. We want to make sure it
-    // doesn't get positioned off-screen.
-    const pane = ref.current?.getBoundingClientRect();
-    if (!pane) return;
-
-    setMenu({
-      id: edge.id,
-      type: 'edge',
-      source: nodes.find(n => n.id === edge.source),
-      target: nodes.find(n => n.id === edge.target),
-      top: event.clientY < pane.height - 200 && event.clientY - pane.top,
-      left: event.clientX < pane.width - 200 && event.clientX - pane.left,
-      right: event.clientX >= pane.width - 200 && pane.width - (event.clientX - pane.left),
-      bottom: event.clientY >= pane.height - 200 && pane.height - (event.clientY - pane.top),
-    });
-  }, [setMenu]);
-
-  const onPaneClick = useCallback(() => setMenu(null), [setMenu]);
 
   // Update layout when equipment list changes
   useEffect(() => {
@@ -232,8 +168,126 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
 
   }, [equipmentList, onEditEquipment, handleEquipmentResize, vertSpace, nodeSpacing, margin, setNodes, setEdges]);
 
+  // helper to get node from screen coordinates
+  const findNodeByPosition = useCallback((screenPosition: { x: number; y: number }) => {
+    // Convert screen coordinates to flow coordinates
+    const flowPosition = reactFlowInstance.screenToFlowPosition(screenPosition);
+    
+    const currNodes = reactFlowInstance.getNodes();
+    return currNodes.find(node => {
+      const { x, y } = node.position || {};
+      const { width, height } = node.measured || {};
+      return (
+        x !== undefined &&
+        y !== undefined &&
+        width !== undefined &&
+        height !== undefined &&
+        flowPosition.x >= x &&
+        flowPosition.x <= x + width &&
+        flowPosition.y <= y &&
+        flowPosition.y >= y - height
+      );
+    });
+
+  }, [reactFlowInstance]);
+
   // Create the snapping-aware node change handler
   const handleNodesChange = createSnappingHandler(nodes, edges, onNodesChange);
+
+  const handleConnectEnd = useCallback((_event: any, params: any) => {
+    // by default we should let this call handleConnect automatically
+
+    // catch when the .to field is inside of a node
+    // use react-flow hooks to convert the x,y position to a component if it exists.
+    console.log(`handleConnectEnd called with screen coordinates:`, params.to);
+
+    if (params.toNode) {
+      // connection is valid
+      return;
+    }
+
+    const targetNode = findNodeByPosition(params.to);
+    if (!targetNode) {
+      // user dragged to no where
+      return;
+    }
+
+    // else use the node
+    if (targetNode.id == params.fromNode.id) {
+      //user dragged to the same node, reposition this handle
+    }
+
+  }, [findNodeByPosition])
+
+  const handleConnect = useCallback((params: any) => {
+    // Delegate to parent component to handle connection logic and state updates
+    if (onConnectEquipment) {
+      onConnectEquipment(params.source, params.target);
+    } else {
+      // Fallback: basic connection without state update
+      console.warn('No onConnectEquipment handler provided');
+    }
+  }, [onConnectEquipment]);
+
+  const handleDeleteEdge = useCallback((edgeId: string) => {
+    // Parse the edge ID to get source and target
+    // Edge IDs are typically in format "source-target" based on the generateEdgesFromItems function
+    const edge = edges.find(e => e.id === edgeId);
+
+    const {source, target} = edge || {};
+    if (!source || !target) {
+      console.warn(`Edge with ID ${edgeId} not found or invalid.`);
+      return;
+    }
+    if (edge && onDeleteConnection) {
+      onDeleteConnection(source, target);
+    } else {
+      console.warn(`Edge with ID ${edgeId} not found or no onDeleteConnection handler provided.`, edge);
+    }
+  }, [edges, onDeleteConnection]);
+
+  const handleNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
+    // Prevent native context menu from showing
+    event.preventDefault();
+
+    // Calculate position of the context menu. We want to make sure it
+    // doesn't get positioned off-screen.
+    const pane = ref.current?.getBoundingClientRect();
+    if (!pane) return;
+
+    setMenu({
+      id: node.id,
+      type: 'node',
+      node: node as CustomFlowNode, // Type assertion since we know this is our custom node
+      top: event.clientY < pane.height - 200 && event.clientY - pane.top,
+      left: event.clientX < pane.width - 200 && event.clientX - pane.left,
+      right: event.clientX >= pane.width - 200 && pane.width - (event.clientX - pane.left),
+      bottom: event.clientY >= pane.height - 200 && pane.height - (event.clientY - pane.top),
+    });
+  }, [setMenu]);
+
+  const handleEdgeContextMenu = useCallback((event: React.MouseEvent, edge: Edge) => {
+    // Prevent native context menu from showing
+    event.preventDefault();
+
+    // Calculate position of the context menu. We want to make sure it
+    // doesn't get positioned off-screen.
+    const pane = ref.current?.getBoundingClientRect();
+    if (!pane) return;
+
+    setMenu({
+      id: edge.id,
+      type: 'edge',
+      source: nodes.find(n => n.id === edge.source),
+      target: nodes.find(n => n.id === edge.target),
+      top: event.clientY < pane.height - 200 && event.clientY - pane.top,
+      left: event.clientX < pane.width - 200 && event.clientX - pane.left,
+      right: event.clientX >= pane.width - 200 && pane.width - (event.clientX - pane.left),
+      bottom: event.clientY >= pane.height - 200 && pane.height - (event.clientY - pane.top),
+    });
+  }, [nodes, setMenu]);
+
+  const onPaneClick = useCallback(() => setMenu(null), [setMenu]);
 
   return (
     <Box ref={ref} id="react-flow-container" style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -244,6 +298,7 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
         onEdgesChange ={onEdgesChange}
         nodeTypes={nodeTypes}
         onConnect={handleConnect}
+        onConnectEnd={handleConnectEnd}
         onNodeContextMenu={handleNodeContextMenu}
         onEdgeContextMenu={handleEdgeContextMenu}
         onPaneClick={onPaneClick}
@@ -284,6 +339,15 @@ const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = ({
         )}
       </ReactFlow>
     </Box>
+  );
+};
+
+// Wrapping with ReactFlowProvider is done outside of the core component
+const ReactFlowLayoutEngine: React.FC<FlowLayoutEngineProps> = (props) => {
+  return (
+    <ReactFlowProvider>
+      <FlowLayoutEngineCore {...props} />
+    </ReactFlowProvider>
   );
 };
 

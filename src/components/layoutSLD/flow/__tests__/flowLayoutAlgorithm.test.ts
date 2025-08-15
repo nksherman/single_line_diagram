@@ -87,7 +87,7 @@ describe('Flow Layout Algorithm', () => {
       });
       
       expect(edges[1]).toEqual({
-        id: 'BUS-01-LOAD-01',
+        id: 'BUS-01(source-1)-LOAD-01(target-1)',
         source: 'BUS-01',
         target: 'LOAD-01',
         sourceHandle: 'source-1',

@@ -19,14 +19,14 @@ describe('ContextMenu', () => {
   let mockEquipment: EquipmentBase;
   let mockOnEdit: jest.Mock;
   let mockOnDelete: jest.Mock;
-  let mockOnClick: jest.Mock;
+  let mockOnClose: jest.Mock;
 
   beforeEach(() => {
     EquipmentBase.clearRegistry();
     mockEquipment = new EquipmentBase('TEST-01', 'Test Equipment', 'Generator');
     mockOnEdit = jest.fn();
     mockOnDelete = jest.fn();
-    mockOnClick = jest.fn();
+    mockOnClose = jest.fn()
     
     // Clear mock calls
     mockSetNodes.mockClear();
@@ -39,9 +39,16 @@ describe('ContextMenu', () => {
 
   const getDefaultProps = () => ({
     id: 'TEST-01',
-    equipmentList: [mockEquipment],
-    onClick: mockOnClick,
-    onClose: jest.fn(),
+    node: {
+      id: 'TEST-01',
+      data: { 
+        equipment: mockEquipment,
+        onEdit: jest.fn()
+      },
+      position: { x: 0, y: 0 },
+      type: 'equipmentNode' as const
+    },
+    onClose: mockOnClose,
     top: 100,
     left: 50,
   });
@@ -82,6 +89,8 @@ describe('ContextMenu', () => {
       renderComponent();
       
       expect(screen.getByText('Edit')).toBeInTheDocument();
+      expect(screen.getByText('Move Handles')).toBeInTheDocument();
+      expect(screen.getByText('Log Handles')).toBeInTheDocument();
       expect(screen.getByText('Delete')).toBeInTheDocument();
     });
 
@@ -104,7 +113,7 @@ describe('ContextMenu', () => {
       fireEvent.click(editMenuItem);
       
       expect(mockOnEdit).toHaveBeenCalledWith(mockEquipment);
-      expect(mockOnClick).toHaveBeenCalled();
+      expect(mockOnClose).toHaveBeenCalled();
     });
 
     it('disables edit menu item when no onEdit handler provided', () => {
@@ -117,6 +126,15 @@ describe('ContextMenu', () => {
     it('does not call onEdit when equipment is not found', () => {
       renderComponent({ 
         id: 'NON-EXISTENT',
+        node: {
+          id: 'NON-EXISTENT',
+          data: { 
+            equipment: null,
+            onEdit: jest.fn()
+          },
+          position: { x: 0, y: 0 },
+          type: 'equipmentNode' as const
+        },
         onEdit: mockOnEdit 
       });
       
@@ -124,7 +142,7 @@ describe('ContextMenu', () => {
       fireEvent.click(editMenuItem);
       
       expect(mockOnEdit).not.toHaveBeenCalled();
-      expect(mockOnClick).toHaveBeenCalled();
+      expect(mockOnClose).toHaveBeenCalled();
     });
   });
 
@@ -136,18 +154,27 @@ describe('ContextMenu', () => {
       fireEvent.click(deleteMenuItem);
       
       expect(mockOnDelete).toHaveBeenCalledWith(mockEquipment);
-      expect(mockOnClick).toHaveBeenCalled();
+      expect(mockOnClose).toHaveBeenCalled();
     });
 
     it('uses fallback deletion when no onDelete handler provided', () => {
-      renderComponent({ onDelete: undefined });
+      const mockNode = {
+        id: 'TEST-01',
+        data: { equipment: mockEquipment },
+        position: { x: 0, y: 0 }
+      };
+      
+      renderComponent({ 
+        onDelete: undefined,
+        node: mockNode 
+      });
       
       const deleteMenuItem = screen.getByText('Delete');
       fireEvent.click(deleteMenuItem);
       
       expect(mockSetNodes).toHaveBeenCalledWith(expect.any(Function));
       expect(mockSetEdges).toHaveBeenCalledWith(expect.any(Function));
-      expect(mockOnClick).toHaveBeenCalled();
+      expect(mockOnClose).toHaveBeenCalled();
     });
 
     it('fallback deletion filters nodes correctly', () => {
@@ -190,6 +217,15 @@ describe('ContextMenu', () => {
     it('uses fallback deletion when equipment not found in list', () => {
       renderComponent({ 
         id: 'NON-EXISTENT',
+        node: {
+          id: 'NON-EXISTENT',
+          data: { 
+            equipment: null,
+            onEdit: jest.fn()
+          },
+          position: { x: 0, y: 0 },
+          type: 'equipmentNode' as const
+        },
         onDelete: mockOnDelete 
       });
       
@@ -199,7 +235,7 @@ describe('ContextMenu', () => {
       expect(mockOnDelete).not.toHaveBeenCalled();
       expect(mockSetNodes).toHaveBeenCalledWith(expect.any(Function));
       expect(mockSetEdges).toHaveBeenCalledWith(expect.any(Function));
-      expect(mockOnClick).toHaveBeenCalled();
+      expect(mockOnClose).toHaveBeenCalled();
     });
   });
 
@@ -218,11 +254,19 @@ describe('ContextMenu', () => {
       expect(paper).toBeInTheDocument();
     });
 
-    it('finds correct equipment from equipment list', () => {
+    it('finds correct equipment from node data', () => {
       const equipment2 = new EquipmentBase('TEST-02', 'Test Equipment 2', 'Load');
       renderComponent({ 
-        equipmentList: [mockEquipment, equipment2],
         id: 'TEST-02',
+        node: {
+          id: 'TEST-02',
+          data: { 
+            equipment: equipment2,
+            onEdit: jest.fn()
+          },
+          position: { x: 0, y: 0 },
+          type: 'equipmentNode' as const
+        },
         onEdit: mockOnEdit 
       });
       
@@ -256,11 +300,12 @@ describe('ContextMenu', () => {
       expect(deleteIcon).toHaveClass('MuiSvgIcon-fontSizeSmall');
     });
 
-    it('has divider between menu items', () => {
+    it('has dividers between menu items', () => {
       renderComponent();
       
-      const divider = screen.getByRole('separator');
-      expect(divider).toBeInTheDocument();
+      const dividers = screen.getAllByRole('separator');
+      expect(dividers.length).toBeGreaterThan(0);
+      expect(dividers[0]).toBeInTheDocument();
     });
   });
 
@@ -289,9 +334,17 @@ describe('ContextMenu', () => {
       expect(paper).toBeInTheDocument();
     });
 
-    it('handles empty equipment list', () => {
+    it('handles empty equipment data', () => {
       renderComponent({ 
-        equipmentList: [],
+        node: {
+          id: 'TEST-01',
+          data: { 
+            equipment: null,
+            onEdit: jest.fn()
+          },
+          position: { x: 0, y: 0 },
+          type: 'equipmentNode' as const
+        },
         onEdit: mockOnEdit,
         onDelete: mockOnDelete 
       });

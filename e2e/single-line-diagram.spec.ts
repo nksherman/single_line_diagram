@@ -40,15 +40,24 @@ test.describe('Static App Start', () => {
     await expect(page.locator('text=Meter 2')).toBeVisible();
   });
 
-  test('should have equipment creator section', async ({ page }) => {
-    // The equipment creator should be present on the left side
-    // Look for elements that would indicate the equipment creator component
-    await expect(page.locator('[data-testid="equipment-creator"], .equipment-creator')).toBeVisible()
-      .catch(async () => {
-        // Fallback: check if there are form elements that suggest equipment creation
-        const hasInputs = await page.locator('input, select, button').count() > 0;
-        expect(hasInputs).toBeTruthy();
-      });
+  test('should have sidebar with equipment creator button', async ({ page }) => {
+    // The sidebar should be visible with the equipment creator button
+    await expect(page.locator('[data-testid="BuildIcon"]').first()).toBeVisible();
+    
+    // Check if clicking the button opens the drawer
+    await page.locator('[data-testid="BuildIcon"]').first().click();
+    await expect(page.locator('text=Equipment Creator')).toBeVisible();
+    
+    // Check if the drawer can be closed
+    await page.locator('[data-testid="CloseIcon"]').first().click();
+    await expect(page.locator('text=Equipment Creator')).not.toBeVisible();
+  });
+
+  test('should display equipment count in footer', async ({ page }) => {
+    // Check that the footer shows equipment count
+    await expect(page.locator('text=Equipment Count:')).toBeVisible();
+    // Should show 7 default equipment items
+    await expect(page.locator('text=Equipment Count: 7')).toBeVisible();
   });
 
   test('should display equipment in the diagram area', async ({ page }) => {
@@ -76,18 +85,8 @@ test.describe('Static App Start', () => {
         expect(hasVersionText).toBeTruthy();
       });
   });
-
-  test('equipment creator allows creating new equipment', async ({ page }) => {
-    // This test would check that new Generator and Bus equipment can be created
-    // through the EquipmentCreator component
-    
-    await page.waitForLoadState('networkidle');
-    
-    // If EquipmentCreator has form fields, they should be visible
-    const hasFormElements = await page.locator('input, select, textarea').count() > 0;
-    expect(hasFormElements).toBeTruthy();
-  });
 });
+
 
 test.describe('Creating Equipment', () => {
   let muiHelpers: MUITestHelpers;
@@ -95,10 +94,24 @@ test.describe('Creating Equipment', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     muiHelpers = new MUITestHelpers(page);
+    
+    // Open the equipment creator drawer before each test
+    await page.locator('[data-testid="BuildIcon"]').first().click();
+    await expect(page.locator('text=Equipment Creator')).toBeVisible();
+  });
+
+  test('should show equipment creator form in drawer', async ({ page }) => {
+    // Verify the drawer is open and contains the expected form elements
+    await expect(page.locator('text=Equipment Creator')).toBeVisible();
+    await expect(page.getByLabel('Equipment Name')).toBeVisible();
+    await expect(page.getByLabel('Equipment Type')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Create Equipment' })).toBeVisible();
+    
+    // Verify the Save button is also present in the drawer
+    await expect(page.getByRole('button', { name: 'Save' })).toBeVisible();
   });
   
   test('should allow creating a Generator with custom properties', async ({ page }) => {
-
     await page.getByLabel('Equipment Name').fill('Custom Generator');
 
     await muiHelpers.selectOption('Equipment Type', 'Generator');
@@ -112,20 +125,24 @@ test.describe('Creating Equipment', () => {
     await page.getByRole('button', { name: 'Create Equipment' }).click();
     
     await expect(page.locator('text=Custom Generator')).toBeVisible();
+    
+    // Check that equipment count increased
+    await expect(page.locator('text=Equipment Count: 8')).toBeVisible();
   });
 
   test('should allow creating a new Bus', async ({ page }) => {
-
     await page.getByLabel('Equipment Name').fill('Custom Bus');
     await muiHelpers.selectOption('Equipment Type', 'Bus');
 
     await page.getByRole('button', { name: 'Create Equipment' }).click();
 
     await expect(page.locator('text=Custom Bus')).toBeVisible();
+    
+    // Check that equipment count increased
+    await expect(page.locator('text=Equipment Count: 8')).toBeVisible();
   });
 
   test('should allow creating a new Meter', async ({ page }) => {
-
     await page.getByLabel('Equipment Name').fill('Custom Meter');
     await muiHelpers.selectOption('Equipment Type', 'Meter');
 
@@ -137,6 +154,9 @@ test.describe('Creating Equipment', () => {
     await page.getByRole('button', { name: 'Create Equipment' }).click();
 
     await expect(page.locator('text=Custom Meter')).toBeVisible();
+    
+    // Check that equipment count increased
+    await expect(page.locator('text=Equipment Count: 8')).toBeVisible();
   });
 
   test('Enforces Voltage restrictions on Transformer', async ({ page }) => {

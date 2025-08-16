@@ -10,6 +10,7 @@ import {
   useReactFlow,
 } from '@xyflow/react';
 import type { Node, Edge, NodeTypes } from '@xyflow/react';
+import { Position } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import Box from '@mui/material/Box';
@@ -168,11 +169,15 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
 
   }, [equipmentList, onEditEquipment, handleEquipmentResize, vertSpace, nodeSpacing, margin, setNodes, setEdges]);
 
+  // Create the snapping-aware node change handler
+  const handleNodesChange = createSnappingHandler(nodes, edges, onNodesChange);
+
+  /**
+   * Node Connections
+   */
+
   // helper to get node from screen coordinates
-  const findNodeByPosition = useCallback((screenPosition: { x: number; y: number }) => {
-    // Convert screen coordinates to flow coordinates
-    const flowPosition = reactFlowInstance.screenToFlowPosition(screenPosition);
-    
+  const findNodeByPosition = useCallback((flowPosition: { x: number; y: number }) => {
     const currNodes = reactFlowInstance.getNodes();
     return currNodes.find(node => {
       const { x, y } = node.position || {};
@@ -191,43 +196,57 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
 
   }, [reactFlowInstance]);
 
-  // Create the snapping-aware node change handler
-  const handleNodesChange = createSnappingHandler(nodes, edges, onNodesChange);
+  const convertXYToPercentPosition = (
+    node: Node, 
+    xyPosition: { x: number; y: number }, 
+    handleSide: Position
+  ): number => {
+    const nodePos = node.position;
+    const nodeDimensions = node.measured || { width: 100, height: 100 }; // fallback dimensions
+    
+    const relativeX = xyPosition.x - nodePos.x;
+    const relativeY = xyPosition.y - nodePos.y;
+    
+    switch (handleSide) {
+      case Position.Top:
+      case Position.Bottom:
+        return Math.max(0, Math.min(100, (relativeX / (nodeDimensions.width || 100) * 100)));
+      
+      case Position.Left:
+      case Position.Right:
+        return Math.max(0, Math.min(100, (relativeY / (nodeDimensions.height || 100) * 100)));
+      
+      default:
+        return 50;
+    }
+  };
 
-  const handleConnectEnd = useCallback((_event: any, params: any) => {
-    // by default we should let this call handleConnect automatically
+  const repositionHandle = useCallback((
+    equipmentId: string, 
+    handleId: string, 
+    newPositionPercent: number
+  ) => {
 
-    // catch when the .to field is inside of a node
-    // use react-flow hooks to convert the x,y position to a component if it exists.
-    console.log(`handleConnectEnd called with screen coordinates:`, params.to);
-
-    if (params.toNode) {
-      // connection is valid
+    const equipment = equipmentList.find(eq => eq.id === equipmentId);
+    if (!equipment) {
+      console.warn(`Equipment with ID ${equipmentId} not found`);
       return;
     }
 
-    const targetNode = findNodeByPosition(params.to);
-    if (!targetNode) {
-      // user dragged to no where
+    const currentHandle = equipment.getHandle(handleId);
+    if (!currentHandle) {
+      console.warn(`Handle with ID ${handleId} not found on equipment ${equipmentId}`);
       return;
     }
+    currentHandle.positionPercent = newPositionPercent;
 
-    // else use the node
-    if (targetNode.id == params.fromNode.id) {
-      //user dragged to the same node, reposition this handle
-    } else {
-      // user dragged to a different node, create a new connection
-
-      // we should automatically assign source
-      params.target = targetNode.id;
-
-
+    if (triggerRerender) {
+      triggerRerender();
+      console.log(`Repositioned handle ${handleId} of equipment ${equipmentId} to ${newPositionPercent}%`);
     }
-
-  }, [findNodeByPosition])
+  }, [equipmentList, triggerRerender]);
 
   const handleConnect = useCallback((params: any) => {
-    // Delegate to parent component to handle connection logic and state updates
     if (onConnectEquipment) {
       onConnectEquipment(params.source, params.target);
     } else {
@@ -235,6 +254,53 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
       console.warn('No onConnectEquipment handler provided');
     }
   }, [onConnectEquipment]);
+
+  const handleConnectEnd = useCallback((_event: any, params: any) => {
+    if (params.toNode) {
+      return; {/* handleConnect is already working */}
+    }
+    const adjustedScreenPosition = {
+      x: params.to.x + 60,
+      y: params.to.y - 30  
+    };
+    const flowPosition = reactFlowInstance.screenToFlowPosition(adjustedScreenPosition);
+
+    const targetNode = findNodeByPosition(flowPosition);
+    if (!targetNode) {
+      // user dragged to no where
+      return;
+    }
+
+    if (targetNode.id === params.fromNode.id) {
+      const fromHandleId = params.fromHandle?.id || params.fromHandle;
+
+      const equipment = EquipmentBase.getById(targetNode.id);
+      if (!equipment) {
+        console.warn(`Equipment with ID ${targetNode.id} not found`);
+        return;
+      }
+
+      const handle = equipment.getHandle(fromHandleId);
+      if (!handle) {
+        console.warn(`Handle with ID ${fromHandleId} not found`);
+        console.log('Available handles:', equipment.handles.map(h => h.id));
+        return;
+      }
+
+      const newPositionPercent = convertXYToPercentPosition(
+        targetNode, 
+        flowPosition, 
+        handle.side
+      );
+
+      repositionHandle(targetNode.id, fromHandleId, newPositionPercent);
+    } else {
+      // user dragged to a different node, create a new connection
+      params.target = targetNode.id;
+      handleConnect(params);
+    }
+
+  }, [findNodeByPosition, repositionHandle, handleConnect]);
 
   const handleDeleteEdge = useCallback((edgeId: string) => {
     // Parse the edge ID to get source and target

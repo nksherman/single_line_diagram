@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import {useCallback, type ReactNode } from 'react'
 
 import { EquipmentBase } from '../models/equipmentBase';
 import ReactFlowLayoutEngine from './layoutSLD/flow/flowLayoutEngine';
@@ -14,8 +14,10 @@ import EditEquipment from './editEquipment';
  */
 
 function Display({ equipmentList, setEquipmentList, handlePopoverOpen }: { 
-  equipmentList: EquipmentBase[]; setEquipmentList: (eq: EquipmentBase[]) => void; handlePopoverOpen: (content: ReactNode, anchorElement: HTMLElement | null) => void }) {
-
+  equipmentList: EquipmentBase[]; 
+  setEquipmentList: React.Dispatch<React.SetStateAction<EquipmentBase[]>>; 
+  handlePopoverOpen: (content: ReactNode, anchorElement: HTMLElement | null) => void 
+}) {
   const handleEditEquipment = (equipmentSubject: EquipmentBase) => {
     // Handle editing of equipment properties
     const editContent = (
@@ -108,16 +110,16 @@ function Display({ equipmentList, setEquipmentList, handlePopoverOpen }: {
     }
   }
 
-  const triggerRerender = () => {
-    // Trigger a re-render by creating a new array reference
-    // Note this may use a stale equipmentList?
-    setEquipmentList([...equipmentList]);
-  }
+  // Create a reliable force update function that uses current state
+  const forceCompleteUpdate = useCallback(() => {
+    // Force update by creating new array reference with current data
+    setEquipmentList(prevList => [...prevList]);
+  }, [setEquipmentList]);
 
   return (
     <ReactFlowLayoutEngine
       equipmentList={equipmentList}
-      triggerRerender={triggerRerender}
+      triggerRerender={forceCompleteUpdate}
       onEditEquipment={handleEditEquipment}
       onDeleteEquipment={handleDeleteEquipment}
       onConnectEquipment={handleConnectEquipment}

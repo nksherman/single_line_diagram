@@ -122,41 +122,6 @@ export default function NodeContextMenu({
     console.log('=== End Handle Positions ===');
   }, [node, nodes]);
 
-  const handleMoveHandles = useCallback(() => {
-    if (!equipment) {
-      console.log('No equipment available for handle movement');
-      return;
-    }
-
-    console.log('Moving handles for equipment:', equipment.name);
-    console.log('Current handles:', equipment.handles);
-
-    // Move all handles by adjusting their positionPercent
-    // For demonstration, we'll shift all handles by 15% (cycling between positions)
-    equipment.handles.forEach((handle) => {
-      // Move handle position by 15%, wrapping around at 85%
-      const currentPercent = handle.positionPercent;
-      let newPercent = currentPercent + 15;
-      
-      // Keep handles within reasonable bounds (15% to 85%)
-      if (newPercent > 85) {
-        newPercent = 15;
-      }
-      
-      handle.positionPercent = newPercent;
-      console.log(`Moved handle ${handle.id} from ${currentPercent}% to ${newPercent}% on side ${handle.side}`);
-    });
-
-    console.log('Updated handles:', equipment.handles);
-
-    // Trigger a re-render to see the changes
-    if (triggerRerender) {
-      triggerRerender();
-    }
-
-    onClose(); // Close menu
-  }, [equipment, triggerRerender, onClose]);
-
   const handleToggleResizeMode = useCallback(() => {
     if (onToggleResizeMode && equipment) {
       onToggleResizeMode(equipment.id);
@@ -197,13 +162,6 @@ export default function NodeContextMenu({
             <EditIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText primary="Edit" />
-        </MenuItem>
-        <Divider />
-        <MenuItem onClick={handleMoveHandles} disabled={!equipment || equipment.handles.length === 0}>
-          <ListItemIcon>
-            <SwapHorizIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText primary="Move Handles" />
         </MenuItem>
         <Divider />
         {equipment instanceof Bus && (

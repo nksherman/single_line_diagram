@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react';
 import type { Node, Edge, NodeChange } from '@xyflow/react';
+import { Position } from '@xyflow/react';
 import { calculateEquipmentDimensions } from '../../../../utils/equipmentDimensions';
 import EquipmentBase from '../../../../models/equipmentBase';
-import Bus from '../../../../models/busEquipment';
 
 interface UseNodeSnappingProps {
   equipmentList: EquipmentBase[];
@@ -34,56 +34,47 @@ export function useNodeSnapping({ equipmentList, snapThreshold = 20 }: UseNodeSn
     const equipment = equipmentList.find(eq => eq.id === node.id);
     const dimensions = equipment ? calculateEquipmentDimensions(equipment) : { width: 100, height: 50 };
     
-    const nodeCenter = {
-      x: node.position.x + dimensions.width / 2,
-      y: node.position.y + dimensions.height / 2
-    };
+    // Find the actual handle from the equipment
+    const handle = equipment?.getHandle(handleId);
+    if (!handle) {
+      // Fallback to node center if handle not found
+      return {
+        x: node.position.x + dimensions.width / 2,
+        y: node.position.y + dimensions.height / 2
+      };
+    } 
 
-    // Calculate handle position based on handle ID
-    if (handleId.startsWith('top')) {
-      let handleX = nodeCenter.x; // Default to center
-      
-      // For bus nodes with multiple handles, calculate position based on handle index
-      if (equipment instanceof Bus && handleId.includes('-')) {
-        const handleIndex = parseInt(handleId.split('-')[1]);
-        const handlesCount = equipment.sources?.size || 1;
-        // Position handles evenly across the width: left at ((i + 1) / (handlesCount + 1)) * 100%
-        handleX = node.position.x + ((handleIndex + 1) / (handlesCount + 1)) * dimensions.width;
-      }
-      
-      return {
-        x: handleX,
-        y: node.position.y
-      };
-    } else if (handleId.startsWith('bottom')) {
-      let handleX = nodeCenter.x; // Default to center
-      
-      // For bus nodes with multiple handles, calculate position based on handle index
-      if (equipment instanceof Bus && handleId.includes('-')) {
-        const handleIndex = parseInt(handleId.split('-')[1]);
-        const handlesCount = equipment.loads?.size || 1;
-        // Position handles evenly across the width
-        handleX = node.position.x + ((handleIndex + 1) / (handlesCount + 1)) * dimensions.width;
-      }
-      
-      return {
-        x: handleX,
-        y: node.position.y + dimensions.height
-      };
-    } else if (handleId.startsWith('left')) {
-      return {
-        x: node.position.x,
-        y: nodeCenter.y
-      };
-    } else if (handleId.startsWith('right')) {
-      return {
-        x: node.position.x + dimensions.width,
-        y: nodeCenter.y
-      };
-    }
+    // Calculate handle position based on the handle's actual side and positionPercent
+    const { side, positionPercent } = handle;
     
-    // Default to node center
-    return nodeCenter;
+    switch (side) {
+      case Position.Top:
+        return {
+          x: node.position.x + (positionPercent / 100) * dimensions.width,
+          y: node.position.y
+        };
+      case Position.Bottom:  
+        return {
+          x: node.position.x + (positionPercent / 100) * dimensions.width,
+          y: node.position.y + dimensions.height
+        };
+      case Position.Left:
+        return {
+          x: node.position.x,
+          y: node.position.y + (positionPercent / 100) * dimensions.height
+        };
+      case Position.Right:
+        return {
+          x: node.position.x + dimensions.width,
+          y: node.position.y + (positionPercent / 100) * dimensions.height
+        };
+      default:
+        // Fallback to node center
+        return {
+          x: node.position.x + dimensions.width / 2,
+          y: node.position.y + dimensions.height / 2
+        };
+    }
   }, [equipmentList]);
 
   const snapToStraightEdge = useCallback((

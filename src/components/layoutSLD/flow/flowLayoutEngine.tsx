@@ -256,7 +256,6 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
 
     if (triggerRerender) {
       triggerRerender();
-      console.log(`Repositioned handle ${handleId} of equipment ${equipmentId} to ${newPositionPercent}%`);
     }
   }, [equipmentList, triggerRerender]);
 

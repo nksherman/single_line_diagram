@@ -5,10 +5,12 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import InfoIcon from '@mui/icons-material/Info';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import AspectRatioIcon from '@mui/icons-material/AspectRatio';
 
 import { type CustomFlowNode } from './equipmentNode';
 
 import EquipmentBase from '../../../models/equipmentBase';
+import Bus from '../../../models/busEquipment';
 
 interface ContextMenuProps {
   id: string;
@@ -21,6 +23,7 @@ interface ContextMenuProps {
   onDelete?: (equipment: EquipmentBase) => void;
   onClose: () => void; // This handles closing the menu when clicked
   triggerRerender?: () => void; // Optional callback to trigger a re-render
+  onToggleResizeMode?: (equipmentId: string) => void; // New prop for toggling resize mode
 }
 
 export default function NodeContextMenu({
@@ -34,6 +37,7 @@ export default function NodeContextMenu({
   onDelete,
   onClose,
   triggerRerender,
+  onToggleResizeMode,
 }: ContextMenuProps) {
   const { setNodes, setEdges } = useReactFlow();
   
@@ -153,6 +157,13 @@ export default function NodeContextMenu({
     onClose(); // Close menu
   }, [equipment, triggerRerender, onClose]);
 
+  const handleToggleResizeMode = useCallback(() => {
+    if (onToggleResizeMode && equipment) {
+      onToggleResizeMode(equipment.id);
+    }
+    onClose(); // Close menu
+  }, [onToggleResizeMode, equipment, onClose]);
+
   const handleDelete = useCallback(() => {
     if (equipment && onDelete) {
       // Call parent delete handler to remove from equipment list
@@ -195,6 +206,15 @@ export default function NodeContextMenu({
           <ListItemText primary="Move Handles" />
         </MenuItem>
         <Divider />
+        {equipment instanceof Bus && (
+            <MenuItem onClick={handleToggleResizeMode} disabled={!onToggleResizeMode}>
+              <ListItemIcon>
+                <AspectRatioIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary={node?.data?.isResizeMode ? "Exit Resize Mode" : "Enter Resize Mode"} />
+            </MenuItem>
+        )}
+        {equipment instanceof Bus && (<Divider /> )}
         <MenuItem onClick={handleLogHandles}>
           <ListItemIcon>
             <InfoIcon fontSize="small" />

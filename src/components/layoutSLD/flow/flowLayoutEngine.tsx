@@ -67,6 +67,7 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const [nodeResizeModes, setNodeResizeModes] = useState<Record<string, boolean>>({});
   const [menu, setMenu] = useState<{
     id: string;
     type: 'node' | 'edge';
@@ -107,6 +108,14 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
       })
     );
   }, [setNodes]);
+
+  // Handle toggle resize mode for individual nodes
+  const handleToggleResizeMode = useCallback((equipmentId: string) => {
+    setNodeResizeModes(prev => ({
+      ...prev,
+      [equipmentId]: !prev[equipmentId]
+    }));
+  }, []);
 
   // Update layout when equipment list changes
   useEffect(() => {
@@ -150,6 +159,7 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
         equipment,
         onEdit: onEditEquipment,
         onResize: handleEquipmentResize,
+        isResizeMode: nodeResizeModes[equipment.id] || false,
       },
     }));
 
@@ -167,7 +177,7 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
     setNodes(nodes);
     setEdges(edges);
 
-  }, [equipmentList, onEditEquipment, handleEquipmentResize, vertSpace, nodeSpacing, margin, setNodes, setEdges]);
+  }, [equipmentList, onEditEquipment, handleEquipmentResize, vertSpace, nodeSpacing, margin, nodeResizeModes, setNodes, setEdges]);
 
   // Create the snapping-aware node change handler
   const handleNodesChange = createSnappingHandler(nodes, edges, onNodesChange);
@@ -179,18 +189,22 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
   // helper to get node from screen coordinates
   const findNodeByPosition = useCallback((flowPosition: { x: number; y: number }) => {
     const currNodes = reactFlowInstance.getNodes();
+
+    const pxlError = 10 ; // Amount allowable to mix node
+
     return currNodes.find(node => {
       const { x, y } = node.position || {};
       const { width, height } = node.measured || {};
+      const effectiveHeight = Math.max(height || 0, 50);
+
+      const withinXBounds = width && flowPosition.x >= x - pxlError && flowPosition.x <= x + pxlError + width;
+      const withinYBounds = effectiveHeight && flowPosition.y >= y - pxlError - effectiveHeight && flowPosition.y <= y + pxlError;
+
       return (
         x !== undefined &&
         y !== undefined &&
-        width !== undefined &&
-        height !== undefined &&
-        flowPosition.x >= x &&
-        flowPosition.x <= x + width &&
-        flowPosition.y <= y &&
-        flowPosition.y >= y - height
+        withinXBounds &&
+        withinYBounds
       );
     });
 
@@ -397,6 +411,7 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
             onDelete={onDeleteEquipment}
             onClose={() => setMenu(null)}
             triggerRerender={triggerRerender}
+            onToggleResizeMode={handleToggleResizeMode}
           />
         )}
         {menu && menu.type === 'edge' && (

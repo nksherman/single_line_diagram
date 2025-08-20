@@ -13,12 +13,12 @@ interface BusEquipmentNodeProps {
     equipment: Bus;
     onEdit: (equipment: EquipmentBase) => void;
     onResize?: (equipment: EquipmentBase, width: number, height: number) => void;
+    isResizeMode?: boolean;
   };
-  selected?: boolean;
 }
 
-const BusEquipmentNode: React.FC<BusEquipmentNodeProps> = ({ data, selected }) => {
-  const { equipment, onEdit, onResize } = data;
+const BusEquipmentNode: React.FC<BusEquipmentNodeProps> = ({ data }) => {
+  const { equipment, onEdit, onResize, isResizeMode } = data;
   
   const handleDoubleClick = () => {
     onEdit(equipment);
@@ -36,7 +36,7 @@ const BusEquipmentNode: React.FC<BusEquipmentNodeProps> = ({ data, selected }) =
   const equipmentDimensions = calculateEquipmentDimensions(equipment);
   const equipmentSize = getBaseEquipmentSize(equipment.type);
   const nodeWidth = equipmentDimensions.width;
-  const textGroups = getTextGroups(equipment);
+  const textGroups = getTextGroups(equipment); 
 
   const getBusColor = () => '#9C27B0'; // Purple color for bus
 
@@ -143,7 +143,7 @@ const BusEquipmentNode: React.FC<BusEquipmentNodeProps> = ({ data, selected }) =
       {/* NodeResizer - only allow horizontal resizing */}
       <NodeResizer
         onResize={handleResize}
-        isVisible={selected}
+        isVisible={isResizeMode || false}
         minWidth={20}
         minHeight={equipmentSize.height}
         maxHeight={equipmentSize.height}

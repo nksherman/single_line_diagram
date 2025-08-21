@@ -187,7 +187,7 @@ export class EquipmentBase {
     // Create unique ID based on side and count
     const sidePrefix = thisSideIsSource ? 'target' : 'source';
     const newHandle: HandlePosition = {
-      id: `${sidePrefix}-${handlesOnThisSide.length + 1}`,
+      id: `${sidePrefix}-${otherEquipment.id}`,
       side: thisSide,
       positionPercent: 50, // Will be redistributed in addHandle
       connectedEquipmentId: otherEquipment.id,

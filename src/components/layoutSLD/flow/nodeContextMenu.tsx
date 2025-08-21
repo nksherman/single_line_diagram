@@ -73,6 +73,12 @@ export default function NodeContextMenu({
       return;
     }
 
+    // log the equipmentdata handle list
+    console.log('=== Equipment Data Handles ===');
+    equipment?.handles.forEach((handle) => {
+      console.log(`Handle ID: ${handle.id}, side: ${handle.side}, equip?: ${handle.connectedEquipmentId ? handle.connectedEquipmentId : 'None'}`);
+    });
+
     // Get handle elements from the DOM - this is the most reliable way
     const nodeElement = document.querySelector(`[data-id="${node.id}"]`);
     if (nodeElement) {

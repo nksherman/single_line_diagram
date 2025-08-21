@@ -117,43 +117,37 @@ export function buildDependencyGraph(items: LayoutNode[]): DependencyGraph {
 export function generateEdgesFromItems(items: LayoutNode[]): EdgeParams[] {
   const edges: EdgeParams[] = [];
 
-  // Create a map to track source connections for each target node
-  const targetSourceMap = new Map<string, string[]>();
-  
-  // First pass: build the map of all connections
   items.forEach(item => {
-
-    item.handles
     item.loads.forEach(load => {
-      if (!targetSourceMap.has(load.id)) {
-        targetSourceMap.set(load.id, []);
-      }
-      targetSourceMap.get(load.id)!.push(item.id);
-    });
-  });
-
-  items.forEach(item => {
-    item.loads.forEach((load, loadIndex) => {
-      // Generate source handle ID based on equipment type and load index
-      let sourceHandle = 'source-1';
-      if (item.type === 'Bus' || item.loads.length > 1) {
-        sourceHandle = `source-${loadIndex+1}`;
-      }
-      
-      // Generate target handle ID based on source index for this target
-      let targetHandle = 'target-1';
-      const targetSources = targetSourceMap.get(load.id) || [];
-      const sourceIndex = targetSources.indexOf(item.id);
-      
-      const targetItem = items.find(i => i.id === load.id);
-      if (targetItem?.type === 'Bus' || targetSources.length > 1) {
-        if (sourceIndex >= 0) {
-          targetHandle = `target-${sourceIndex+1}`;
+      // Find the source handle for this load connection
+      let sourceHandle = 'source-default';
+      if (item.handles) {
+        const sourceHandleObj = item.handles.find(handle => 
+          handle.isSource && handle.connectedEquipmentId === load.id
+        );
+        if (sourceHandleObj) {
+          sourceHandle = sourceHandleObj.id;
         }
+      } else if (item.type === 'Bus' || item.loads.length > 1) {
+        sourceHandle = `source-${load.id}`;
+      }
+      
+      // Find the target handle for this connection
+      let targetHandle = 'target-default';
+      const targetItem = items.find(i => i.id === load.id);
+      if (targetItem?.handles) {
+        const targetHandleObj = targetItem.handles.find(handle => 
+          !handle.isSource && handle.connectedEquipmentId === item.id
+        );
+        if (targetHandleObj) {
+          targetHandle = targetHandleObj.id;
+        }
+      } else if (targetItem?.type === 'Bus') {
+        targetHandle = `target-${item.id}`;
       }
 
       edges.push({
-        id: `${item.id}(${sourceHandle})-${load.id}(${targetHandle})`,
+        id: `${item.id}-${load.id}`,
         source: item.id,
         target: load.id,
         sourceHandle,

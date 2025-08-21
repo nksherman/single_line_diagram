@@ -287,7 +287,7 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
     if (targetNode.id === params.fromNode.id) {
       const fromHandleId = params.fromHandle?.id || params.fromHandle;
 
-      const equipment = EquipmentBase.getById(targetNode.id);
+      const equipment = equipmentList.find(eq => eq.id === targetNode.id);
       if (!equipment) {
         console.warn(`Equipment with ID ${targetNode.id} not found`);
         return;
@@ -296,7 +296,7 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
       const handle = equipment.getHandle(fromHandleId);
       if (!handle) {
         console.warn(`Handle with ID ${fromHandleId} not found`);
-        console.log('Available handles:', equipment.handles.map(h => h.id));
+        console.log('Looking for ', fromHandleId, 'Available handles:', equipment.handles.map(h => h.id));
         return;
       }
 
@@ -313,7 +313,7 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
       handleConnect(params);
     }
 
-  }, [findNodeByPosition, repositionHandle, handleConnect]);
+  }, [equipmentList, findNodeByPosition, repositionHandle, handleConnect]);
 
   const handleDeleteEdge = useCallback((edgeId: string) => {
     // Parse the edge ID to get source and target

@@ -196,8 +196,17 @@ function EquipmentCreator({equipmentList, setEquipmentList}: {
       }
 
       // Generate unique ID
-      const id = `${selectedEquipmentType.toLowerCase()}_${Date.now()}`;
-      
+      let existingCount = equipmentList.filter(eq => 
+        eq.type === selectedEquipmentType
+      ).length;
+
+      let id = `${selectedEquipmentType.toLowerCase()}_${existingCount + 1}`;
+      // check if id is already in use, 
+      while (equipmentList.some(eq => eq.id === id)) {
+        existingCount++;
+        id = `${selectedEquipmentType.toLowerCase()}_${existingCount + 1}`;
+      }
+
       let newEquipment: EquipmentBase;
       
       if (selectedEquipmentType === 'Generator') {

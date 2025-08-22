@@ -258,7 +258,7 @@ describe('EquipmentBase', () => {
         "handles": [
           {
             "connectedEquipmentId": "XFMR-01",
-            "id": "source-1",
+            "id": "source-XFMR-01",
             'isSource': true,
             "positionPercent": 50,
             "side": "bottom"

@@ -4,7 +4,6 @@ import { Paper, MenuList, MenuItem, ListItemIcon, ListItemText, Divider } from '
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import InfoIcon from '@mui/icons-material/Info';
-import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import AspectRatioIcon from '@mui/icons-material/AspectRatio';
 
 import { type CustomFlowNode } from './equipmentNode';
@@ -36,7 +35,6 @@ export default function NodeContextMenu({
   onEdit,
   onDelete,
   onClose,
-  triggerRerender,
   onToggleResizeMode,
 }: ContextMenuProps) {
   const { setNodes, setEdges } = useReactFlow();

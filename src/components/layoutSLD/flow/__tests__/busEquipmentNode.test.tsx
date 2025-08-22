@@ -43,7 +43,7 @@ describe('BusEquipmentNode', () => {
     EquipmentBase.clearRegistry();
   });
 
-  const renderComponent = (bus = mockBus, selected = false) => {
+  const renderComponent = (bus = mockBus) => {
     return render(
       <ReactFlowProvider>
         <BusEquipmentNode
@@ -52,7 +52,6 @@ describe('BusEquipmentNode', () => {
             onEdit: mockOnEdit,
             onResize: mockOnResize,
           }}
-          selected={selected}
         />
       </ReactFlowProvider>
     );

@@ -181,9 +181,6 @@ export class EquipmentBase {
     // thisSideIsSource = false means this equipment acts as a target, so handle goes on top
     const thisSide = thisSideIsSource ?  Position.Top :  Position.Bottom;
    
-    // Get handles on the same side to determine the next index
-    const handlesOnThisSide = this._handles.filter(handle => handle.side === thisSide);
-    
     // Create unique ID based on side and count
     const sidePrefix = thisSideIsSource ? 'target' : 'source';
     const newHandle: HandlePosition = {

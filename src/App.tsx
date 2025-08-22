@@ -232,6 +232,7 @@ function App() {
         >
           <IconButton
             onClick={handleToggleEquipmentCreator}
+            id="toggle-equipment-creator"
             sx={{
               mb: 2,
               backgroundColor: isDrawerOpen && drawerTitle === 'Equipment Creator' ? 'primary.main' : 'transparent',
@@ -276,7 +277,7 @@ function App() {
             }}
           >
             <Typography variant="h6">{drawerTitle}</Typography>
-            <IconButton onClick={handleCloseDrawer}>
+            <IconButton id="close-drawer" onClick={handleCloseDrawer}>
               <CloseIcon />
             </IconButton>
           </Toolbar>

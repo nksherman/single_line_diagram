@@ -89,7 +89,6 @@ describe('ContextMenu', () => {
       renderComponent();
       
       expect(screen.getByText('Edit')).toBeInTheDocument();
-      expect(screen.getByText('Move Handles')).toBeInTheDocument();
       expect(screen.getByText('Log Handles')).toBeInTheDocument();
       expect(screen.getByText('Delete')).toBeInTheDocument();
     });

@@ -22,7 +22,7 @@ export interface EquipmentNodeData extends Record<string, unknown> {
 export type EquipmentFlowNode = Node<EquipmentNodeData, 'equipmentNode'>;
 export type BusFlowNode = Node<EquipmentNodeData, 'busNode'>;
 export type CustomFlowNode = EquipmentFlowNode | BusFlowNode;
-
+  
 
 // Custom node component props
 export interface EquipmentNodeProps {
@@ -34,12 +34,12 @@ export interface EquipmentNodeProps {
   selected?: boolean;
 }
 
-const EquipmentNode: React.FC<EquipmentNodeProps> = ({ data, selected }) => {
+const EquipmentNode: React.FC<EquipmentNodeProps> = ({ data }) => {
   const { equipment, onEdit } = data;
 
   // If this is a bus equipment, use the specialized bus component
   if (equipment instanceof Bus) {
-    return <BusEquipmentNode data={{ ...data, equipment: equipment as Bus }} selected={selected} />;
+    return <BusEquipmentNode data={{ ...data, equipment: equipment as Bus }} />;
   }
   
   // Use the shared dimension calculation

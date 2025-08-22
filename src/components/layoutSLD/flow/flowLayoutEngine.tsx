@@ -409,7 +409,7 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
             onEdit={onEditEquipment}
             onDelete={onDeleteEquipment}
             onClose={() => setMenu(null)}
-            triggerRerender={triggerRerender}
+            // triggerRerender={triggerRerender}
             onToggleResizeMode={handleToggleResizeMode}
           />
         )}

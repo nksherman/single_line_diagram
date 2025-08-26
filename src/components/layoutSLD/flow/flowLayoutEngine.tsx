@@ -41,6 +41,11 @@ export interface FlowLayoutEngineProps {
   onDeleteEquipment?: (equipment: EquipmentBase) => void;
   onConnectEquipment?: (sourceId: string, targetId: string) => boolean;
   onDeleteConnection?: (sourceId: string, targetId: string) => void;
+  layoutOffsets?: {
+    sidebarWidth: number;
+    drawerWidth: number;
+    headerHeight: number;
+  };
 }
 
 const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
@@ -50,6 +55,11 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
   onDeleteEquipment,
   onConnectEquipment,
   onDeleteConnection,
+  layoutOffsets = {
+    sidebarWidth: 60,
+    drawerWidth: 0,
+    headerHeight: 64, // Default Material-UI Toolbar height
+  },
 }) => {
   // You can access the internal React Flow state here
   const reactFlowInstance = useReactFlow(); // eslint-disable-line @typescript-eslint/no-unused-vars
@@ -272,9 +282,11 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
     if (params.toNode) {
       return; {/* handleConnect is already working */}
     }
+    
+    // Calculate dynamic adjustments based on layout offsets
     const adjustedScreenPosition = {
-      x: params.to.x + 60,
-      y: params.to.y - 30  
+      x: params.to.x + layoutOffsets.sidebarWidth + layoutOffsets.drawerWidth,
+      y: params.to.y + layoutOffsets.headerHeight
     };
     const flowPosition = reactFlowInstance.screenToFlowPosition(adjustedScreenPosition);
 
@@ -313,7 +325,7 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
       handleConnect(params);
     }
 
-  }, [equipmentList, findNodeByPosition, repositionHandle, handleConnect]);
+  }, [equipmentList, findNodeByPosition, repositionHandle, handleConnect, layoutOffsets]);
 
   const handleDeleteEdge = useCallback((edgeId: string) => {
     // Parse the edge ID to get source and target

@@ -13,10 +13,20 @@ import EditEquipment from './editEquipment';
  * For now, display all equipment vertically.
  */
 
-function Display({ equipmentList, setEquipmentList, handlePopoverOpen }: { 
+function Display({ 
+  equipmentList, 
+  setEquipmentList, 
+  handlePopoverOpen,
+  layoutOffsets 
+}: { 
   equipmentList: EquipmentBase[]; 
   setEquipmentList: React.Dispatch<React.SetStateAction<EquipmentBase[]>>; 
-  handlePopoverOpen: (content: ReactNode, anchorElement: HTMLElement | null) => void 
+  handlePopoverOpen: (content: ReactNode, anchorElement: HTMLElement | null) => void;
+  layoutOffsets?: {
+    sidebarWidth: number;
+    drawerWidth: number;
+    headerHeight: number;
+  };
 }) {
   const handleEditEquipment = (equipmentSubject: EquipmentBase) => {
     // Handle editing of equipment properties
@@ -124,6 +134,7 @@ function Display({ equipmentList, setEquipmentList, handlePopoverOpen }: {
       onDeleteEquipment={handleDeleteEquipment}
       onConnectEquipment={handleConnectEquipment}
       onDeleteConnection={handleDeleteConnection}
+      layoutOffsets={layoutOffsets}
     />
   );
 }

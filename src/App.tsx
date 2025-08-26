@@ -164,6 +164,13 @@ function App() {
     return null;
   };
 
+  // Calculate dynamic layout offsets for the flow engine
+  const layoutOffsets = {
+    sidebarWidth: 60, // Fixed sidebar width
+    drawerWidth: isDrawerOpen ? 400 : 0, // Dynamic drawer width
+    headerHeight: 64, // Approximate header height (Material-UI Toolbar default)
+  };
+
   return (
     <Box 
       id="app-container"
@@ -304,6 +311,7 @@ function App() {
             equipmentList={equipment} 
             setEquipmentList={setEquipment}
             handlePopoverOpen={handlePopoverOpen}
+            layoutOffsets={layoutOffsets}
           />
         </Box>
       </Box>

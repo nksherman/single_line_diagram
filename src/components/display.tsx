@@ -50,6 +50,9 @@ function Display({
       load.removeSource(equipment);
     });
 
+    // Remove the equipment from the registry
+    equipment.removeFromRegistry();
+
     // Remove the equipment from the list
     const updatedList = equipmentList.filter(eq => eq.id !== equipment.id);
     setEquipmentList([...updatedList]);

@@ -300,6 +300,20 @@ export class EquipmentBase {
   }
 
   /**
+   * Remove equipment from registry
+   */
+  static removeFromRegistry(id: string): boolean {
+    return EquipmentBase.registry.delete(id);
+  }
+
+  /**
+   * Remove this equipment instance from registry
+   */
+  removeFromRegistry(): boolean {
+    return EquipmentBase.removeFromRegistry(this.id);
+  }
+
+  /**
    * Generate standardized handle ID that matches the layout algorithm
    */
   static generateStandardHandleId(equipmentId: string, isSource: boolean, side: string, index: number): string {

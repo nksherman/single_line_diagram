@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { MUITestHelpers } from './mui-test-helpers';
+import { MUITestHelpers, calculatePosition, dragElementTo } from './mui-test-helpers';
 
 test.describe('Static App Start', () => {
   test.beforeEach(async ({ page }) => {
@@ -184,4 +184,32 @@ test.describe('Creating Equipment', () => {
     await expect(alerts).toHaveCount(1);
     await expect(alerts.first()).toContainText('Voltage mismatch: Bus 1 provides 11kV but Custom Transformer expects 5kV on source side');
   });
+
+  test('Re-add equipment', async ({ page }) => {
+    // Re-add the previously removed equipment
+    await page.getByLabel('Equipment Name').fill('Custom Bus');
+    await muiHelpers.selectOption('Equipment Type', 'Bus');
+
+    await page.getByRole('button', { name: 'Create Equipment' }).click();
+
+    // zoom the map, delete the new bus
+    await page.getByRole('button', { name: 'Fit View' }).click();
+    await expect(page.locator('text=Custom Bus')).toBeVisible();
+
+    const element = page.getByTestId('rf__node-bus_2');
+    await element.click({ button: 'right' });
+
+    await expect(page.getByRole('menuitem', { name: 'Delete' })).toBeVisible();
+    await page.getByRole('menuitem', { name: 'Delete' }).click();
+
+    // re-add the bus equipment
+    await page.getByLabel('Equipment Name').fill('Custom Bus');
+    await muiHelpers.selectOption('Equipment Type', 'Bus');
+
+    await page.getByRole('button', { name: 'Create Equipment' }).click();
+
+    await expect(page.locator('text=Equipment Count: 8')).toBeVisible();
+
+  });
+
 });

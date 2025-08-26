@@ -1,6 +1,18 @@
 # Single Line Diagram - Patch Notes
 
 
+## v0.1.2 - Fixes and connections
+**Released:** August 26, 2025
+**Type:** UX Improvements
+
+Implemented node snapping, resizing, adjusting
+
+### Added ✅
+- Added tests with CI/CD
+- Bus Node can be resized
+- Node handles can be moved along node face
+
+
 ## v0.1.0 - Initial Public Hosting
 **Released:** August 1, 2025
 **Type:** Initial Alpha Release

@@ -31,6 +31,7 @@ function GeneratorEditor({ generator, equipmentList, setEquipmentList, onSave }:
   // Form state
   const [name, setName] = useState(generator.name);
   const [capacity, setCapacity] = useState(generator.capacity);
+  const [disableVoltage, setDisableVoltage] = useState(false);
   const [voltage, setVoltage] = useState(generator.voltage);
   const [fuelType, setFuelType] = useState(generator.fuelType);
   const [efficiency, setEfficiency] = useState(generator.efficiency);
@@ -45,9 +46,13 @@ function GeneratorEditor({ generator, equipmentList, setEquipmentList, onSave }:
 
   // Initialize connections
   useEffect(() => {
-    setSelectedSources(Array.from(generator.sources).map(eq => eq.id));
-    setSelectedLoads(Array.from(generator.loads).map(eq => eq.id));
-  }, [generator]);
+    const sources = Array.from(generator.sources).map(eq => eq.id);
+    setSelectedSources(sources);
+    const loads = Array.from(generator.loads).map(eq => eq.id);
+    setSelectedLoads(loads);
+
+    setDisableVoltage(sources.length > 0 || loads.length > 0);
+  }, [generator, generator.sources, generator.loads]);
 
   // Get available equipment for connections (excluding current generator)
   const availableEquipment = equipmentList.filter(eq => eq.id !== generator.id);
@@ -235,8 +240,7 @@ function GeneratorEditor({ generator, equipmentList, setEquipmentList, onSave }:
         label="Voltage (kV)"
         type="number"
         value={voltage}
-        disabled={true} // Fixed voltage for generators
-        helperText="Change the voltage at the transformer level"
+        disabled={disableVoltage}
         onChange={(e) => setVoltage(Number(e.target.value))}
       />
 

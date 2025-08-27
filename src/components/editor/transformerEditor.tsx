@@ -30,6 +30,7 @@ interface TransformerEditorProps {
 function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSave }: TransformerEditorProps) {
   // Form state
   const [name, setName] = useState(transformer.name);
+  const [disableVoltage, setDisableVoltage] = useState(false);
   const [primaryVoltage, setPrimaryVoltage] = useState(transformer.primaryVoltage);
   const [secondaryVoltage, setSecondaryVoltage] = useState(transformer.secondaryVoltage);
   const [powerRating, setPowerRating] = useState(transformer.powerRating);
@@ -47,9 +48,13 @@ function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSav
 
   // Initialize connections
   useEffect(() => {
-    setSelectedSources(Array.from(transformer.sources).map(eq => eq.id));
-    setSelectedLoads(Array.from(transformer.loads).map(eq => eq.id));
-  }, [transformer]);
+    const sources = Array.from(transformer.sources).map(eq => eq.id);
+    setSelectedSources(sources);
+    const loads = Array.from(transformer.loads).map(eq => eq.id);
+    setSelectedLoads(loads);
+
+    setDisableVoltage(sources.length > 0 || loads.length > 0);
+  }, [transformer, transformer.sources, transformer.loads]);
 
   // Get available equipment for connections (excluding current transformer)
   const availableEquipment = equipmentList.filter(eq => eq.id !== transformer.id);
@@ -236,6 +241,7 @@ function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSav
         label="Primary Voltage (kV)"
         type="number"
         value={primaryVoltage}
+        disabled={disableVoltage}
         onChange={(e) => setPrimaryVoltage(Number(e.target.value))}
       />
 
@@ -246,6 +252,7 @@ function TransformerEditor({ transformer, equipmentList, setEquipmentList, onSav
         label="Secondary Voltage (kV)"
         type="number"
         value={secondaryVoltage}
+        disabled={disableVoltage}
         onChange={(e) => setSecondaryVoltage(Number(e.target.value))}
       />
 

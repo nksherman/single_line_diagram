@@ -30,6 +30,7 @@ interface MeterEditorProps {
 function MeterEditor({ meter, equipmentList, setEquipmentList, onSave }: MeterEditorProps) {
   // Form state
   const [name, setName] = useState(meter.name);
+  const [disableVoltage, setDisableVoltage] = useState(false);
   const [voltageRating, setVoltageRating] = useState(meter.voltageRating);
   const [currentRating, setCurrentRating] = useState(meter.currentRating);
   const [accuracyClass, setAccuracyClass] = useState(meter.accuracyClass);
@@ -44,9 +45,13 @@ function MeterEditor({ meter, equipmentList, setEquipmentList, onSave }: MeterEd
 
   // Initialize connections
   useEffect(() => {
-    setSelectedSources(Array.from(meter.sources).map(eq => eq.id));
-    setSelectedLoads(Array.from(meter.loads).map(eq => eq.id));
-  }, [meter]);
+    const sources = Array.from(meter.sources).map(eq => eq.id);
+    setSelectedSources(sources);
+    const loads = Array.from(meter.loads).map(eq => eq.id);
+    setSelectedLoads(loads);
+
+    setDisableVoltage(sources.length > 0 || loads.length > 0);
+  }, [meter, meter.sources, meter.loads]);
 
   // Get available equipment for connections (excluding current meter)
   const availableEquipment = equipmentList.filter(eq => eq.id !== meter.id);
@@ -220,6 +225,7 @@ function MeterEditor({ meter, equipmentList, setEquipmentList, onSave }: MeterEd
         label="Voltage Rating (kV)"
         type="number"
         value={voltageRating}
+        disabled={disableVoltage}
         onChange={(e) => setVoltageRating(Number(e.target.value))}
       />
 

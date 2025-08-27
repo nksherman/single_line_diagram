@@ -30,6 +30,7 @@ interface BusEditorProps {
 function BusEditor({ bus, equipmentList, setEquipmentList, onSave }: BusEditorProps) {
   // Form state
   const [name, setName] = useState(bus.name);
+  const [disableVoltage, setDisableVoltage] = useState(false);
   const [voltage, setVoltage] = useState(bus.voltage);
   const [allowedSources, setAllowedSources] = useState(bus.allowedSources);
   const [allowedLoads, setAllowedLoads] = useState(bus.allowedLoads);
@@ -43,9 +44,13 @@ function BusEditor({ bus, equipmentList, setEquipmentList, onSave }: BusEditorPr
 
   // Initialize connections
   useEffect(() => {
-    setSelectedSources(Array.from(bus.sources).map(eq => eq.id));
-    setSelectedLoads(Array.from(bus.loads).map(eq => eq.id));
-  }, [bus]);
+    const sources = Array.from(bus.sources).map(eq => eq.id);
+    setSelectedSources(sources);
+    const loads = Array.from(bus.loads).map(eq => eq.id);
+    setSelectedLoads(loads);
+
+    setDisableVoltage(sources.length > 0 || loads.length > 0);
+  }, [bus, bus.sources, bus.loads]);
 
   // Get available equipment for connections (excluding current bus)
   const availableEquipment = equipmentList.filter(eq => eq.id !== bus.id);
@@ -240,7 +245,7 @@ function BusEditor({ bus, equipmentList, setEquipmentList, onSave }: BusEditorPr
         label="Voltage (kV)"
         type="number"
         value={voltage}
-        disabled={true}
+        disabled={disableVoltage}
         helperText="Voltage is locked - change at the source equipment level"
         onChange={(e) => setVoltage(Number(e.target.value))}
       />

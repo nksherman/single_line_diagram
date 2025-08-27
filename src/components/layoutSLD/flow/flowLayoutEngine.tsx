@@ -10,7 +10,6 @@ import {
   useReactFlow,
 } from '@xyflow/react';
 import type { Node, Edge, NodeTypes } from '@xyflow/react';
-import { Position } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import EquipmentNode from './equipmentNode';
@@ -21,6 +20,7 @@ import Bus from '../../../models/busEquipment';
 import { calculateEquipmentDimensions } from '../../../utils/equipmentDimensions';
 import { setUnsetEquipmentPositions, generateEdgesFromItems, type LayoutNode } from './flowLayoutAlgorithm';
 import { createEdgeStyle } from '../../../utils/edgeUtils';
+import { useFlowPositioning } from '../../../utils/useFlowPositioning';
 
 import { type CustomFlowNode } from './equipmentNode';
 import NodeContextMenu from './nodeContextMenu';
@@ -96,6 +96,13 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
   const [isDragActive, setIsDragActive] = useState(false);
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
   const [closestEdgeId, setClosestEdgeId] = useState<string | null>(null);
+
+  // Use the flow positioning hook
+  const {
+    screenToFlowPosition,
+    convertXYToPercentPosition,
+    findNodeByPosition
+  } = useFlowPositioning(nodes, layoutOffsets);
 
   // Use the snapping hook
   const {
@@ -202,68 +209,6 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
    * Node Connections
    */
 
-  // helper to get node from screen coordinates
-  const findNodeByPosition = useCallback((flowPosition: { x: number; y: number }) => {
-    const currNodes = reactFlowInstance.getNodes();
-
-    const pxlError = 10 ; // Amount allowable to mix node
-
-    return currNodes.find(node => {
-      const { x, y } = node.position || {};
-      const { width, height } = node.measured || {};
-      const effectiveHeight = Math.max(height || 0, 30);
-
-      const withinXBounds = width && flowPosition.x >= x - pxlError && flowPosition.x <= x + pxlError + width;
-      const withinYBounds = effectiveHeight && flowPosition.y >= y - pxlError && flowPosition.y <= y + pxlError + effectiveHeight;
-
-      console.log(`Node ${node.id} size: ${width}x${height}x${effectiveHeight}, withinXBounds: ${withinXBounds}, withinYBounds: ${withinYBounds}`);
-
-      return (
-        x !== undefined &&
-        y !== undefined &&
-        withinXBounds &&
-        withinYBounds
-      );
-    });
-
-  }, [reactFlowInstance]);
-
-  const screenToFlowPosition = useCallback(({ x, y }: { x: number; y: number }) => {
-    // Calculate dynamic adjustments based on layout offsets
-    const adjustedScreenPosition = {
-      x: x + layoutOffsets.sidebarWidth + layoutOffsets.drawerWidth,
-      y: y + layoutOffsets.headerHeight
-    };
-    const flowPosition = reactFlowInstance.screenToFlowPosition(adjustedScreenPosition);
-    return flowPosition;
-
-  }, [layoutOffsets, reactFlowInstance]);
-
-  const convertXYToPercentPosition = (
-    node: Node, 
-    xyPosition: { x: number; y: number }, 
-    handleSide: Position
-  ): number => {
-    const nodePos = node.position;
-    const nodeDimensions = node.measured || { width: 100, height: 100 }; // fallback dimensions
-    
-    const relativeX = xyPosition.x - nodePos.x;
-    const relativeY = xyPosition.y - nodePos.y;
-    
-    switch (handleSide) {
-      case Position.Top:
-      case Position.Bottom:
-        return Math.max(0, Math.min(100, (relativeX / (nodeDimensions.width || 100) * 100)));
-      
-      case Position.Left:
-      case Position.Right:
-        return Math.max(0, Math.min(100, (relativeY / (nodeDimensions.height || 100) * 100)));
-      
-      default:
-        return 50;
-    }
-  };
-
   const repositionHandle = useCallback((
     equipmentId: string, 
     handleId: string, 
@@ -303,14 +248,16 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
     }
     
     // Calculate dynamic adjustments based on layout offsets
+    const flowPosition = screenToFlowPosition({
+      screenToFlowPositionFn: reactFlowInstance.screenToFlowPosition,
+      screenPosition: params.to,
+    });
 
-    console.log(params)
-    const flowPosition = screenToFlowPosition(params.to);
+    const targetNode = findNodeByPosition(flowPosition, 10);
 
-    const targetNode = findNodeByPosition(flowPosition);
     if (!targetNode) {
       // user dragged to no where
-      console.log("no Node")
+      console.log("no Node to target")
       return;
     }
 
@@ -330,11 +277,11 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
         return;
       }
 
-      const newPositionPercent = convertXYToPercentPosition(
-        targetNode, 
-        flowPosition, 
-        handle.side
-      );
+      const newPositionPercent = convertXYToPercentPosition({
+        node: targetNode,
+        xyPosition: flowPosition,
+        handleSide: handle.side
+    });
 
       repositionHandle(targetNode.id, fromHandleId, newPositionPercent);
     } else {
@@ -343,7 +290,7 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
       handleConnect(params);
     }
 
-  }, [equipmentList, findNodeByPosition, repositionHandle, handleConnect, layoutOffsets]);
+  }, [equipmentList, nodes, repositionHandle, handleConnect, findNodeByPosition]);
 
   const handleDeleteEdge = useCallback((edgeId: string) => {
     // Parse the edge ID to get source and target
@@ -360,42 +307,48 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
     } else {
       console.warn(`Edge with ID ${edgeId} not found or no onDeleteConnection handler provided.`, edge);
     }
-  }, [edges, onDeleteConnection]);
+  }, [edges, onDeleteConnection, layoutOffsets]);
 
   const handleNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
-    // Prevent native context menu from showing
     event.preventDefault();
-    // revise this with layoutdimensions
-
-    // Calculate position of the context menu relative to the viewport
+    
+    // Adjust menu position to account for layout offsets
+    const adjustedX = event.clientX - layoutOffsets.sidebarWidth - layoutOffsets.drawerWidth;
+    const adjustedY = event.clientY - layoutOffsets.headerHeight;
+    const availableWidth = window.innerWidth - layoutOffsets.sidebarWidth - layoutOffsets.drawerWidth;
+    const availableHeight = window.innerHeight - layoutOffsets.headerHeight;
+    
     setMenu({
       id: node.id,
       type: 'node',
       node: node as CustomFlowNode, // Type assertion since we know this is our custom node
-      top: event.clientY < window.innerHeight - 200 ? event.clientY : false,
-      left: event.clientX < window.innerWidth - 200 ? event.clientX : false,
-      right: event.clientX >= window.innerWidth - 200 ? window.innerWidth - event.clientX : false,
-      bottom: event.clientY >= window.innerHeight - 200 ? window.innerHeight - event.clientY : false,
+      top: adjustedY < availableHeight - 200 ? adjustedY : false,
+      left: adjustedX < availableWidth - 200 ? adjustedX : false,
+      right: adjustedX >= availableWidth - 200 ? window.innerWidth - adjustedX : false,
+      bottom: adjustedY >= availableHeight - 200 ? window.innerHeight - adjustedY : false,
     });
-  }, [setMenu]);
+  }, [setMenu, layoutOffsets]);
 
   const handleEdgeContextMenu = useCallback((event: React.MouseEvent, edge: Edge) => {
-    // Prevent native context menu from showing
     event.preventDefault();
-    // revise this with layoutdimensions
+    
+    // Adjust menu position to account for layout offsets
+    const adjustedX = event.clientX - layoutOffsets.sidebarWidth - layoutOffsets.drawerWidth;
+    const adjustedY = event.clientY - layoutOffsets.headerHeight;
+    const availableWidth = window.innerWidth - layoutOffsets.sidebarWidth - layoutOffsets.drawerWidth;
+    const availableHeight = window.innerHeight - layoutOffsets.headerHeight;
 
-    // Calculate position of the context menu relative to the viewport
     setMenu({
       id: edge.id,
       type: 'edge',
       source: nodes.find(n => n.id === edge.source),
       target: nodes.find(n => n.id === edge.target),
-      top: event.clientY < window.innerHeight - 200 ? event.clientY : false,
-      left: event.clientX < window.innerWidth - 200 ? event.clientX : false,
-      right: event.clientX >= window.innerWidth - 200 ? window.innerWidth - event.clientX : false,
-      bottom: event.clientY >= window.innerHeight - 200 ? window.innerHeight - event.clientY : false,
+      top: adjustedY < availableHeight - 200 ? adjustedY : false,
+      left: adjustedX < availableWidth - 200 ? adjustedX : false,
+      right: adjustedX >= availableWidth - 200 ? window.innerWidth - event.clientX : false,
+      bottom: adjustedY >= availableHeight - 200 ? window.innerHeight - event.clientY : false,
     });
-  }, [nodes, setMenu]);
+  }, [nodes, setMenu, layoutOffsets]);
 
   const onPaneClick = useCallback(() => setMenu(null), [setMenu]);
 

@@ -1,14 +1,36 @@
 import type { Node } from '@xyflow/react';
 import { Position } from '@xyflow/react';
 
+
+export const screenToFlowPosition = ({
+  screenToFlowPositionFn,
+  screenPosition,
+  layoutOffsets
+}: {
+  screenToFlowPositionFn: (pos: { x: number; y: number }) => { x: number; y: number },
+  screenPosition: { x: number; y: number },
+  layoutOffsets: { sidebarWidth: number; drawerWidth: number; headerHeight: number }
+}): { x: number; y: number } => {
+  const adjustedScreenPosition = {
+    x: screenPosition.x + layoutOffsets.sidebarWidth + layoutOffsets.drawerWidth,
+    y: screenPosition.y + layoutOffsets.headerHeight
+  };
+  return screenToFlowPositionFn(adjustedScreenPosition);
+}
+
+
 /**
  * Converts screen coordinates to a percentage position relative to a node handle
  */
-export const convertXYToPercentPosition = (
-  node: Node, 
-  xyPosition: { x: number; y: number }, 
+export const convertXYToPercentPosition = ({
+  node,
+  xyPosition,
+  handleSide
+}: {
+  node: Node,
+  xyPosition: { x: number; y: number },
   handleSide: Position
-): number => {
+}): number => {
   const nodePos = node.position;
   const nodeDimensions = node.measured || { width: 100, height: 100 }; // fallback dimensions
   

@@ -96,11 +96,11 @@ export const useConnectionHandlers = ({
         return;
       }
 
-      const newPositionPercent = convertXYToPercentPosition(
-        targetNode, 
-        flowPosition, 
-        handle.side
-      );
+      const newPositionPercent = convertXYToPercentPosition({
+        node: targetNode,
+        xyPosition: flowPosition,
+        handleSide: handle.side
+      });
 
       repositionHandle(targetNode.id, fromHandleId, newPositionPercent);
     } else {

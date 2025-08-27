@@ -12,11 +12,13 @@ import Drawer from '@mui/material/Drawer'
 import IconButton from '@mui/material/IconButton'
 import Toolbar from '@mui/material/Toolbar'
 import BuildIcon from '@mui/icons-material/Build'
+import PaletteIcon from '@mui/icons-material/Palette'
 import CloseIcon from '@mui/icons-material/Close'
 import ReactMarkdown from 'react-markdown'
 
 import Display from './components/display'
 import EquipmentCreator from './components/equipmentCreator'
+import EquipmentPalette from './components/layoutSLD/dragDrop/equipmentPalette'
 
 import { EquipmentBase } from './models/equipmentBase'
 import Generator from './models/generatorEquipment'
@@ -133,6 +135,14 @@ function App() {
     setDrawerTitle('');
   };
 
+  const handleToggleEquipmentPalette = () => {
+    if (isDrawerOpen && drawerTitle === 'Equipment Palette') {
+      handleCloseDrawer();
+    } else {
+      handleOpenDrawer('Equipment Palette');
+    }
+  };
+
   const handleToggleEquipmentCreator = () => {
     if (isDrawerOpen && drawerTitle === 'Equipment Creator') {
       handleCloseDrawer();
@@ -160,6 +170,8 @@ function App() {
           </Button>
         </>
       );
+    } else if (drawerTitle === 'Equipment Palette') {
+      return <EquipmentPalette />;
     }
     return null;
   };
@@ -237,6 +249,20 @@ function App() {
             py: 2,
           }}
         >
+          <IconButton
+            onClick={handleToggleEquipmentPalette}
+            id="toggle-equipment-palette"
+            sx={{
+              mb: 2,
+              backgroundColor: isDrawerOpen && drawerTitle === 'Equipment Palette' ? 'primary.main' : 'transparent',
+              color: isDrawerOpen && drawerTitle === 'Equipment Palette' ? 'white' : 'text.primary',
+              '&:hover': {
+                backgroundColor: isDrawerOpen && drawerTitle === 'Equipment Palette' ? 'primary.dark' : 'grey.200',
+              },
+            }}
+          >
+            <PaletteIcon />
+          </IconButton>
           <IconButton
             onClick={handleToggleEquipmentCreator}
             id="toggle-equipment-creator"

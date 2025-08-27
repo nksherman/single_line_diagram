@@ -43,6 +43,7 @@ export type EquipmentType =
   | 'Relay'
   | 'Load'
   | 'Source'
+  | 'Meter'
   | 'Other';
 
 export interface EquipmentCreateOptions {

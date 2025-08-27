@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useEffect, useState, useRef } from 'react';
+import React, { useCallback, useMemo, useEffect, useState } from 'react';
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -13,8 +13,6 @@ import type { Node, Edge, NodeTypes } from '@xyflow/react';
 import { Position } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import Box from '@mui/material/Box';
-
 import EquipmentNode from './equipmentNode';
 import BusEquipmentNode from './busEquipmentNode';
 import EquipmentBase from '../../../models/equipmentBase';
@@ -22,12 +20,16 @@ import Bus from '../../../models/busEquipment';
 
 import { calculateEquipmentDimensions } from '../../../utils/equipmentDimensions';
 import { setUnsetEquipmentPositions, generateEdgesFromItems, type LayoutNode } from './flowLayoutAlgorithm';
+import { createEdgeStyle } from '../../../utils/edgeUtils';
 
 import { type CustomFlowNode } from './equipmentNode';
 import NodeContextMenu from './nodeContextMenu';
 import EdgeContextMenu from './edgeContextMenu';
 import { useNodeSnapping } from './nodeSnap/useNodeSnapping';
 import SnapLinesOverlay from './nodeSnap/SnapLinesOverlay';
+import DragDropWrapper from './DragDropWrapper';
+import DebugOverlay from './DebugOverlay';
+import type { EquipmentType } from '../../../types/equipment.types';
 
 /**
  *  This function takes a list of equipment and generates a layout for them.
@@ -41,6 +43,7 @@ export interface FlowLayoutEngineProps {
   onDeleteEquipment?: (equipment: EquipmentBase) => void;
   onConnectEquipment?: (sourceId: string, targetId: string) => boolean;
   onDeleteConnection?: (sourceId: string, targetId: string) => void;
+  onCreateEquipment?: (type: EquipmentType, sourceId: string, targetId: string) => void;
   layoutOffsets?: {
     sidebarWidth: number;
     drawerWidth: number;
@@ -55,10 +58,11 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
   onDeleteEquipment,
   onConnectEquipment,
   onDeleteConnection,
+  onCreateEquipment,
   layoutOffsets = {
     sidebarWidth: 60,
     drawerWidth: 0,
-    headerHeight: 64, // Default Material-UI Toolbar height
+    headerHeight: 64,
   },
 }) => {
   // You can access the internal React Flow state here
@@ -89,7 +93,9 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
     right?: number | false;
     bottom?: number | false;
   } | null>(null);
-  const ref = useRef<HTMLDivElement | null>(null);
+  const [isDragActive, setIsDragActive] = useState(false);
+  const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
+  const [closestEdgeId, setClosestEdgeId] = useState<string | null>(null);
 
   // Use the snapping hook
   const {
@@ -181,13 +187,13 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
       sourceHandle: layoutEdge.sourceHandle || 'bottom',
       targetHandle: layoutEdge.targetHandle || 'top',
       type: 'step',
-      style: { strokeWidth: 2, stroke: '#666' },
+      style: createEdgeStyle(layoutEdge.id, closestEdgeId),
     }));
 
     setNodes(nodes);
     setEdges(edges);
 
-  }, [equipmentList, onEditEquipment, handleEquipmentResize, vertSpace, nodeSpacing, margin, nodeResizeModes, setNodes, setEdges]);
+  }, [equipmentList, onEditEquipment, handleEquipmentResize, vertSpace, nodeSpacing, margin, nodeResizeModes, closestEdgeId, setNodes, setEdges]);
 
   // Create the snapping-aware node change handler
   const handleNodesChange = createSnappingHandler(nodes, edges, onNodesChange);
@@ -205,10 +211,12 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
     return currNodes.find(node => {
       const { x, y } = node.position || {};
       const { width, height } = node.measured || {};
-      const effectiveHeight = Math.max(height || 0, 50);
+      const effectiveHeight = Math.max(height || 0, 30);
 
       const withinXBounds = width && flowPosition.x >= x - pxlError && flowPosition.x <= x + pxlError + width;
-      const withinYBounds = effectiveHeight && flowPosition.y >= y - pxlError - effectiveHeight && flowPosition.y <= y + pxlError;
+      const withinYBounds = effectiveHeight && flowPosition.y >= y - pxlError && flowPosition.y <= y + pxlError + effectiveHeight;
+
+      console.log(`Node ${node.id} size: ${width}x${height}x${effectiveHeight}, withinXBounds: ${withinXBounds}, withinYBounds: ${withinYBounds}`);
 
       return (
         x !== undefined &&
@@ -219,6 +227,17 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
     });
 
   }, [reactFlowInstance]);
+
+  const screenToFlowPosition = useCallback(({ x, y }: { x: number; y: number }) => {
+    // Calculate dynamic adjustments based on layout offsets
+    const adjustedScreenPosition = {
+      x: x + layoutOffsets.sidebarWidth + layoutOffsets.drawerWidth,
+      y: y + layoutOffsets.headerHeight
+    };
+    const flowPosition = reactFlowInstance.screenToFlowPosition(adjustedScreenPosition);
+    return flowPosition;
+
+  }, [layoutOffsets, reactFlowInstance]);
 
   const convertXYToPercentPosition = (
     node: Node, 
@@ -284,15 +303,14 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
     }
     
     // Calculate dynamic adjustments based on layout offsets
-    const adjustedScreenPosition = {
-      x: params.to.x + layoutOffsets.sidebarWidth + layoutOffsets.drawerWidth,
-      y: params.to.y + layoutOffsets.headerHeight
-    };
-    const flowPosition = reactFlowInstance.screenToFlowPosition(adjustedScreenPosition);
+
+    console.log(params)
+    const flowPosition = screenToFlowPosition(params.to);
 
     const targetNode = findNodeByPosition(flowPosition);
     if (!targetNode) {
       // user dragged to no where
+      console.log("no Node")
       return;
     }
 
@@ -347,48 +365,56 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
   const handleNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
     // Prevent native context menu from showing
     event.preventDefault();
+    // revise this with layoutdimensions
 
-    // Calculate position of the context menu. We want to make sure it
-    // doesn't get positioned off-screen.
-    const pane = ref.current?.getBoundingClientRect();
-    if (!pane) return;
-
+    // Calculate position of the context menu relative to the viewport
     setMenu({
       id: node.id,
       type: 'node',
       node: node as CustomFlowNode, // Type assertion since we know this is our custom node
-      top: event.clientY < pane.height - 200 && event.clientY - pane.top,
-      left: event.clientX < pane.width - 200 && event.clientX - pane.left,
-      right: event.clientX >= pane.width - 200 && pane.width - (event.clientX - pane.left),
-      bottom: event.clientY >= pane.height - 200 && pane.height - (event.clientY - pane.top),
+      top: event.clientY < window.innerHeight - 200 ? event.clientY : false,
+      left: event.clientX < window.innerWidth - 200 ? event.clientX : false,
+      right: event.clientX >= window.innerWidth - 200 ? window.innerWidth - event.clientX : false,
+      bottom: event.clientY >= window.innerHeight - 200 ? window.innerHeight - event.clientY : false,
     });
   }, [setMenu]);
 
   const handleEdgeContextMenu = useCallback((event: React.MouseEvent, edge: Edge) => {
     // Prevent native context menu from showing
     event.preventDefault();
+    // revise this with layoutdimensions
 
-    // Calculate position of the context menu. We want to make sure it
-    // doesn't get positioned off-screen.
-    const pane = ref.current?.getBoundingClientRect();
-    if (!pane) return;
-
+    // Calculate position of the context menu relative to the viewport
     setMenu({
       id: edge.id,
       type: 'edge',
       source: nodes.find(n => n.id === edge.source),
       target: nodes.find(n => n.id === edge.target),
-      top: event.clientY < pane.height - 200 && event.clientY - pane.top,
-      left: event.clientX < pane.width - 200 && event.clientX - pane.left,
-      right: event.clientX >= pane.width - 200 && pane.width - (event.clientX - pane.left),
-      bottom: event.clientY >= pane.height - 200 && pane.height - (event.clientY - pane.top),
+      top: event.clientY < window.innerHeight - 200 ? event.clientY : false,
+      left: event.clientX < window.innerWidth - 200 ? event.clientX : false,
+      right: event.clientX >= window.innerWidth - 200 ? window.innerWidth - event.clientX : false,
+      bottom: event.clientY >= window.innerHeight - 200 ? window.innerHeight - event.clientY : false,
     });
   }, [nodes, setMenu]);
 
   const onPaneClick = useCallback(() => setMenu(null), [setMenu]);
 
   return (
-    <Box ref={ref} id="react-flow-container" style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <DragDropWrapper
+      nodes={nodes}
+      edges={edges}
+      layoutOffsets={layoutOffsets}
+      onCreateEquipment={onCreateEquipment}
+      onClosestEdgeChange={setClosestEdgeId}
+      onMousePositionChange={setMousePosition}
+      onDragActiveChange={setIsDragActive}
+    >
+      <DebugOverlay 
+        mousePosition={mousePosition}
+        isDragActive={isDragActive}
+        closestEdgeId={closestEdgeId}
+      />
+      
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -437,7 +463,7 @@ const FlowLayoutEngineCore: React.FC<FlowLayoutEngineProps> = ({
           />
         )}
       </ReactFlow>
-    </Box>
+    </DragDropWrapper>
   );
 };
 
